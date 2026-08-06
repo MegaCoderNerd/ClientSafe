@@ -1,0 +1,50 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  FREELANCER
+  CLIENT
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+}
+
+model User {
+  id                 String            @id @default(cuid())
+  email              String            @unique
+  name               String
+  role               Role
+  freelancerProjects DeliveryProject[] @relation("FreelancerProjects")
+  clientProjects     DeliveryProject[] @relation("ClientProjects")
+}
+
+model DeliveryProject {
+  id            String        @id @default(cuid())
+  title         String
+  description   String
+  price         Int
+  currency      String
+  paymentStatus PaymentStatus @default(PENDING)
+  freelancerId  String
+  clientId      String
+  freelancer    User          @relation("FreelancerProjects", fields: [freelancerId], references: [id])
+  client        User          @relation("ClientProjects", fields: [clientId], references: [id])
+  asset         Asset?
+}
+
+model Asset {
+  id              String          @id @default(cuid())
+  projectId       String          @unique
+  previewUrl      String
+  originalFileUrl String
+  isUnlocked      Boolean         @default(false)
+  project         DeliveryProject @relation(fields: [projectId], references: [id])
+}
