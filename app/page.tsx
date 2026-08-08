@@ -12,7 +12,7 @@ export default async function HomePage() {
 
   if (!session?.user) {
     return (
-      <main className="mx-auto flex min-h-[calc(100vh-64px)] max-w-4xl flex-col justify-center items-center gap-6 p-8">
+      <main className="mx-auto flex min-h-[calc(100vh-64px)] max-w-4xl flex-col justify-start items-center gap-6 p-8 pt-20">
         <h1 className="text-4xl font-bold text-center">ClientVault</h1>
         <p className="text-lg text-slate-700 text-center max-w-prose">
           Secure digital asset delivery with preview-before-payment protection. Create vaults, share preview links, and unlock originals after payment.
@@ -49,13 +49,13 @@ export default async function HomePage() {
     <main className="mx-auto flex max-w-5xl flex-col gap-8 p-8">
       {/* Welcome Section */}
       <section className="rounded-xl border bg-white p-6 shadow-sm">
-        <h1 className="text-3xl font-bold">Welcome, {session.user.name ?? session.user.email}! 👋</h1>
+        <h1 className="text-3xl font-bold">Welcome, {session.user.name ?? session.user.email}</h1>
         <p className="mt-2 text-slate-600">Manage your vaults and deliveries in one place.</p>
       </section>
 
       {/* Create New Vault Section (Freelancer) */}
       <section className="rounded-xl border bg-white p-6 shadow-sm">
-        <h2 className="text-2xl font-semibold mb-4">➕ Create New Vault</h2>
+        <h2 className="text-2xl font-semibold mb-4">Create New Vault</h2>
         <p className="text-sm text-slate-600 mb-4">Create a secure delivery vault to share with clients.</p>
         <form action={createProject} className="grid gap-4 md:grid-cols-2">
           <label className="flex flex-col gap-2 text-sm">
@@ -112,7 +112,7 @@ export default async function HomePage() {
       {/* Your Vaults Section (Freelancer Created) */}
       {freelancerProjects.length > 0 ? (
         <section className="rounded-xl border bg-white p-6 shadow-sm">
-          <h2 className="text-2xl font-semibold mb-4">📦 Your Vaults</h2>
+          <h2 className="text-2xl font-semibold mb-4">Your Vaults</h2>
           <p className="text-sm text-slate-600 mb-4">Vaults you created for your clients.</p>
           <ul className="space-y-4">
             {freelancerProjects.map((project) => (
@@ -123,7 +123,7 @@ export default async function HomePage() {
                     <p className="text-sm text-slate-600">Client: {project.client.name} ({project.client.email})</p>
                     <p className="text-sm text-slate-600">{project.description}</p>
                     <p className="text-sm font-medium mt-2">
-                      💰 {project.price / 100} {project.currency} • Status: <span className={project.paymentStatus === "COMPLETED" ? "text-green-600" : "text-yellow-600"}>{project.paymentStatus}</span>
+                      {project.price / 100} {project.currency} • Status: <span className={project.paymentStatus === "COMPLETED" ? "text-green-600" : "text-yellow-600"}>{project.paymentStatus}</span>
                     </p>
                   </div>
                   <Link href={`/p/${project.id}`} className="ml-4 px-3 py-2 rounded-md bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 whitespace-nowrap">
@@ -139,7 +139,7 @@ export default async function HomePage() {
       {/* Invited Vaults Section (Client Invitations) */}
       {clientProjects.length > 0 ? (
         <section className="rounded-xl border bg-white p-6 shadow-sm">
-          <h2 className="text-2xl font-semibold mb-4">🎁 Vaults Shared With You</h2>
+          <h2 className="text-2xl font-semibold mb-4">Vaults Shared With You</h2>
           <p className="text-sm text-slate-600 mb-4">Vaults that have been shared with you as a client.</p>
           <ul className="space-y-4">
             {clientProjects.map((project) => {
@@ -154,7 +154,7 @@ export default async function HomePage() {
                       <p className="text-sm text-slate-600">From: {project.freelancer.name} ({project.freelancer.email})</p>
                       <p className="text-sm text-slate-600">{project.description}</p>
                       <p className="text-sm font-medium mt-2">
-                        💰 {project.price / 100} {project.currency} • Status: <span className={project.paymentStatus === "COMPLETED" ? "text-green-600" : "text-yellow-600"}>{project.paymentStatus}</span>
+                        {project.price / 100} {project.currency} • Status: <span className={project.paymentStatus === "COMPLETED" ? "text-green-600" : "text-yellow-600"}>{project.paymentStatus}</span>
                       </p>
                     </div>
                   </div>
@@ -185,7 +185,7 @@ export default async function HomePage() {
       {/* Empty State */}
       {freelancerProjects.length === 0 && clientProjects.length === 0 ? (
         <section className="rounded-xl border border-dashed bg-slate-50 p-8 text-center">
-          <p className="text-slate-600">No vaults yet. Create your first vault above! 🚀</p>
+          <p className="text-slate-600">No vaults yet. Create your first vault above.</p>
         </section>
       ) : null}
     </main>

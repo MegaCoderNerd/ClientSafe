@@ -11,8 +11,8 @@ export default async function SignInPage() {
   }
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center p-6">
-      <div className="rounded-xl border bg-white p-6 shadow-sm">
+    <main className="mx-auto flex min-h-screen max-w-md flex-col justify-start items-center p-6 pt-20">
+      <div className="rounded-xl border bg-white p-6 shadow-sm w-full">
         <h1 className="text-2xl font-semibold">Sign in to ClientVault</h1>
         <p className="mt-2 text-sm text-slate-600">Use mock accounts to test FREELANCER and CLIENT flows.</p>
         <SignInForm />

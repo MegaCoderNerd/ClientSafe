@@ -52,7 +52,7 @@ export default function SignUpPage() {
   }
 
   return (
-    <main className="mx-auto flex min-h-[calc(100vh-64px)] max-w-4xl flex-col justify-center items-center p-8">
+    <main className="mx-auto flex min-h-screen max-w-4xl flex-col justify-start items-center p-8 pt-20">
       <section className="w-full max-w-md rounded-xl border bg-white p-6 shadow-sm">
         <h1 className="text-2xl font-semibold mb-2">Create your account</h1>
         <p className="text-sm text-slate-600 mb-4">Sign up to start creating and sharing secure delivery projects.</p>
