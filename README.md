@@ -6,7 +6,7 @@ ClientVault is a full-stack Next.js 14 demo for secure freelancer-to-client asse
 
 - Next.js 14 (App Router) + TypeScript + Tailwind CSS
 - Prisma ORM + SQLite (local dev)
-- NextAuth.js mock credentials authentication (`FREELANCER` and `CLIENT`)
+- NextAuth.js mock credentials authentication (single demo account)
 - Stripe Node.js SDK (test mode) for checkout + webhook unlock flow
 
 ## Local Setup
@@ -62,10 +62,9 @@ npm run dev
 
 Open `http://localhost:3000`.
 
-## Demo Accounts
+## Demo Account
 
-- FREELANCER: `freelancer@clientvault.dev` / `freelancer123`
-- CLIENT: `client@clientvault.dev` / `client123`
+- DEMO: `demo@clientvault.dev` / `demo123`
 
 ## Core Routes
 

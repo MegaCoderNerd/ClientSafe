@@ -7,11 +7,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum Role {
-  FREELANCER
-  CLIENT
-}
-
 enum PaymentStatus {
   PENDING
   COMPLETED
@@ -21,7 +16,7 @@ model User {
   id                 String            @id @default(cuid())
   email              String            @unique
   name               String
-  role               Role
+  password           String?
   freelancerProjects DeliveryProject[] @relation("FreelancerProjects")
   clientProjects     DeliveryProject[] @relation("ClientProjects")
 }

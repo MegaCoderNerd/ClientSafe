@@ -6,27 +6,33 @@ import { useState } from "react";
 
 export function SignInForm() {
   const router = useRouter();
-  const [email, setEmail] = useState("freelancer@clientvault.dev");
-  const [password, setPassword] = useState("freelancer123");
+  const [email, setEmail] = useState("demo@clientvault.dev");
+  const [password, setPassword] = useState("demo123");
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setError(null);
+    setLoading(true);
 
-    const response = await signIn("credentials", {
+    const response = (await signIn("credentials", {
       email,
       password,
       redirect: false,
-      callbackUrl: "/dashboard",
-    });
+    })) as { error?: string; ok?: boolean; url?: string } | undefined;
+
+    setLoading(false);
 
     if (response?.error) {
-      setError("Invalid credentials");
+      setError(response.error ?? "Invalid credentials");
       return;
     }
 
-    router.push("/dashboard");
+    const destination = response?.url ?? "/";
+    router.push(destination);
   }
+
 
   return (
     <form onSubmit={onSubmit} className="mt-4 space-y-4">
@@ -52,13 +58,17 @@ export function SignInForm() {
           required
         />
       </label>
-      <button type="submit" className="w-full rounded-md bg-slate-900 px-4 py-2 text-white">
-        Sign In
+      <button
+        type="submit"
+        disabled={loading}
+        className="w-full rounded-md bg-slate-900 px-4 py-2 text-white disabled:opacity-60"
+      >
+        {loading ? "Signing in..." : "Sign In"}
       </button>
       {error ? <p className="text-sm text-red-600">{error}</p> : null}
-      <div className="space-y-1 text-xs text-slate-600">
-        <p>FREELANCER: freelancer@clientvault.dev / freelancer123</p>
-        <p>CLIENT: client@clientvault.dev / client123</p>
+
+      <div className="mt-3 text-xs text-slate-600">
+        Demo: demo@clientvault.dev / demo123
       </div>
     </form>
   );

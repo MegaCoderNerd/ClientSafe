@@ -1,7 +1,6 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
-import { Role } from "@prisma/client";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
@@ -9,8 +8,8 @@ import { revalidatePath } from "next/cache";
 export async function createProject(formData: FormData) {
   const session = await getServerSession(authOptions);
 
-  if (!session?.user || session.user.role !== Role.FREELANCER) {
-    throw new Error("Only freelancers can create projects.");
+  if (!session?.user) {
+    throw new Error("Authentication required to create a vault.");
   }
 
   const clientId = String(formData.get("clientId") ?? "");
@@ -31,7 +30,7 @@ export async function createProject(formData: FormData) {
     Number.isNaN(priceInDollars) ||
     priceInDollars <= 0
   ) {
-    throw new Error("Please provide valid project and asset details.");
+    throw new Error("Please provide valid vault and asset details.");
   }
 
   await prisma.deliveryProject.create({
@@ -51,5 +50,5 @@ export async function createProject(formData: FormData) {
     },
   });
 
-  revalidatePath("/dashboard");
+  revalidatePath("/");
 }

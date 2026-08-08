@@ -1,27 +1,19 @@
-import { PrismaClient, PaymentStatus, Role } from "@prisma/client";
+import { PrismaClient, PaymentStatus } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
 async function main() {
   const freelancer = await prisma.user.upsert({
-    where: { email: "freelancer@clientvault.dev" },
+    where: { email: "demo@clientvault.dev" },
     update: {},
     create: {
-      email: "freelancer@clientvault.dev",
-      name: "Demo Freelancer",
-      role: Role.FREELANCER,
+      email: "demo@clientvault.dev",
+      name: "Demo User",
+      password: "demo123",
     },
   });
 
-  const client = await prisma.user.upsert({
-    where: { email: "client@clientvault.dev" },
-    update: {},
-    create: {
-      email: "client@clientvault.dev",
-      name: "Demo Client",
-      role: Role.CLIENT,
-    },
-  });
+  const client = freelancer;
 
   await prisma.deliveryProject.upsert({
     where: { id: "demo-locked-project" },
