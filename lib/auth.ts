@@ -36,6 +36,11 @@ export const authOptions: NextAuthOptions = {
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
+        console.log("[auth] authorize credentials", {
+          email: credentials?.email,
+          hasPassword: Boolean(credentials?.password),
+        });
+
         const mockUser = mockUsers.find(
           (candidate) =>
             candidate.email === credentials?.email &&
@@ -43,28 +48,34 @@ export const authOptions: NextAuthOptions = {
         );
 
         if (!mockUser) {
+          console.warn("[auth] no matching mock user");
           return null;
         }
 
-        const dbUser = await prisma.user.upsert({
-          where: { email: mockUser.email },
-          update: {
-            name: mockUser.name,
-            role: mockUser.role,
-          },
-          create: {
-            email: mockUser.email,
-            name: mockUser.name,
-            role: mockUser.role,
-          },
-        });
+        try {
+          const dbUser = await prisma.user.upsert({
+            where: { email: mockUser.email },
+            update: {
+              name: mockUser.name,
+              role: mockUser.role,
+            },
+            create: {
+              email: mockUser.email,
+              name: mockUser.name,
+              role: mockUser.role,
+            },
+          });
 
-        return {
-          id: dbUser.id,
-          email: dbUser.email,
-          name: dbUser.name,
-          role: dbUser.role,
-        };
+          return {
+            id: dbUser.id,
+            email: dbUser.email,
+            name: dbUser.name,
+            role: dbUser.role,
+          };
+        } catch (error) {
+          console.error("[auth] prisma upsert failed", error);
+          return null;
+        }
       },
     }),
   ],

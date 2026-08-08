@@ -2,9 +2,9 @@ import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
 type RouteContext = {
-  params: {
+  params: Promise<{
     assetId: string;
-  };
+  }>;
 };
 
 export async function GET(request: Request, context: RouteContext) {
@@ -16,7 +16,7 @@ export async function GET(request: Request, context: RouteContext) {
   }
 
   const asset = await prisma.asset.findUnique({
-    where: { id: context.params.assetId },
+    where: { id: (await context.params).assetId },
   });
 
   if (!asset || !asset.isUnlocked) {

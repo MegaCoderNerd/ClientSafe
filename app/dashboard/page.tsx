@@ -1,7 +1,9 @@
 import { createProject } from "@/app/dashboard/actions";
 import { authOptions } from "@/lib/auth";
+import { createProtectedDownloadLink, getPreviewAssetUrl } from "@/lib/storage";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
+import Image from "next/image";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
@@ -12,11 +14,67 @@ export default async function DashboardPage() {
     redirect("/auth/signin");
   }
 
+  if (session.user.role === "CLIENT") {
+    const clientProjects = await prisma.deliveryProject.findMany({
+      where: { clientId: session.user.id },
+      include: { freelancer: true, asset: true },
+      orderBy: { title: "asc" },
+    });
+
+    return (
+      <main className="mx-auto flex max-w-5xl flex-col gap-8 p-8">
+        <section className="rounded-xl border bg-white p-6 shadow-sm">
+          <h1 className="text-2xl font-semibold">Client Portal</h1>
+          <p className="mt-2 text-sm text-slate-600">Review project previews and download assets after payment unlocks.</p>
+        </section>
+
+        <section className="rounded-xl border bg-white p-6 shadow-sm">
+          <h2 className="text-xl font-semibold">Your Projects</h2>
+          <ul className="mt-4 space-y-4">
+            {clientProjects.length > 0 ? (
+              clientProjects.map((project) => {
+                const previewUrl = project.asset ? getPreviewAssetUrl(project.asset.previewUrl) : null;
+                const protectedDownloadUrl = project.asset ? createProtectedDownloadLink(project.asset.id) : null;
+
+                return (
+                  <li key={project.id} className="rounded-md border p-4">
+                    <p className="font-medium">{project.title}</p>
+                    <p className="text-sm text-slate-600">Freelancer: {project.freelancer.name}</p>
+                    <p className="text-sm text-slate-600">Status: {project.paymentStatus}</p>
+                    {previewUrl ? (
+                      <div className="relative mt-4 aspect-video overflow-hidden rounded-lg border bg-slate-100">
+                        <Image src={previewUrl} alt={`${project.title} preview`} fill className="object-cover" unoptimized />
+                      </div>
+                    ) : null}
+                    <div className="mt-3 flex flex-wrap gap-3">
+                      <Link href={`/p/${project.id}`} className="inline-block text-sm font-medium text-blue-700 underline">
+                        Open Preview Page
+                      </Link>
+                      {project.paymentStatus === "COMPLETED" && project.asset?.isUnlocked && protectedDownloadUrl ? (
+                        <Link href={protectedDownloadUrl} className="inline-block text-sm font-medium text-blue-700 underline">
+                          Download Original Asset
+                        </Link>
+                      ) : null}
+                    </div>
+                  </li>
+                );
+              })
+            ) : (
+              <p className="rounded-md border bg-slate-50 p-4 text-sm text-slate-600">
+                No projects have been assigned to your account yet.
+              </p>
+            )}
+          </ul>
+        </section>
+      </main>
+    );
+  }
+
   if (session.user.role !== "FREELANCER") {
     return (
       <main className="mx-auto max-w-4xl p-8">
-        <h1 className="text-2xl font-semibold">Freelancer Dashboard</h1>
-        <p className="mt-4">Only FREELANCER accounts can access this portal.</p>
+        <h1 className="text-2xl font-semibold">Access Restricted</h1>
+        <p className="mt-4">This account does not have a recognized portal role.</p>
       </main>
     );
   }

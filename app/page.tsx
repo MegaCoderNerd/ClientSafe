@@ -9,7 +9,7 @@ export default function Home() {
       </p>
       <div className="flex flex-wrap gap-3">
         <Link href="/dashboard" className="rounded-md bg-slate-900 px-4 py-2 text-white">
-          Freelancer Dashboard
+          Open Portal
         </Link>
         <Link href="/auth/signin" className="rounded-md border px-4 py-2">
           Sign In

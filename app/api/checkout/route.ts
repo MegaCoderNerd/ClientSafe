@@ -22,29 +22,34 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Project not found" }, { status: 404 });
   }
 
-  const origin = request.headers.get("origin") ?? "http://localhost:3000";
-  const stripe = getStripeClient();
-  const session = await stripe.checkout.sessions.create({
-    mode: "payment",
-    line_items: [
-      {
-        quantity: 1,
-        price_data: {
-          currency: project.currency.toLowerCase(),
-          product_data: {
-            name: project.title,
-            description: project.description,
+  try {
+    const origin = request.headers.get("origin") ?? "http://localhost:3000";
+    const stripe = getStripeClient();
+    const session = await stripe.checkout.sessions.create({
+      mode: "payment",
+      line_items: [
+        {
+          quantity: 1,
+          price_data: {
+            currency: project.currency.toLowerCase(),
+            product_data: {
+              name: project.title,
+              description: project.description,
+            },
+            unit_amount: project.price,
           },
-          unit_amount: project.price,
         },
+      ],
+      metadata: {
+        projectId: project.id,
       },
-    ],
-    metadata: {
-      projectId: project.id,
-    },
-    success_url: `${origin}/p/${project.id}?paid=true`,
-    cancel_url: `${origin}/p/${project.id}?canceled=true`,
-  });
+      success_url: `${origin}/p/${project.id}?paid=true`,
+      cancel_url: `${origin}/p/${project.id}?canceled=true`,
+    });
 
-  return NextResponse.json({ checkoutUrl: session.url });
+    return NextResponse.json({ checkoutUrl: session.url });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unable to start checkout";
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
 }

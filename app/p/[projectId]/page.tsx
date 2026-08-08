@@ -6,14 +6,16 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 type Props = {
-  params: {
+  params: Promise<{
     projectId: string;
-  };
+  }>;
 };
 
 export default async function ClientPreviewPage({ params }: Props) {
+  const { projectId } = await params;
+
   const project = await prisma.deliveryProject.findUnique({
-    where: { id: params.projectId },
+    where: { id: projectId },
     include: { freelancer: true, asset: true },
   });
 

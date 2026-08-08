@@ -1,11 +1,13 @@
 import Stripe from "stripe";
 
 export function getStripeClient() {
-  if (!process.env.STRIPE_SECRET_KEY) {
+  const secretKey = process.env.STRIPE_SECRET_KEY;
+
+  if (!secretKey || secretKey === "sk_test_your_key") {
     throw new Error("STRIPE_SECRET_KEY is missing");
   }
 
-  return new Stripe(process.env.STRIPE_SECRET_KEY, {
+  return new Stripe(secretKey, {
     apiVersion: "2025-08-27.basil",
   });
 }

@@ -1,20 +1,23 @@
 "use client";
 
 import { signIn } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 export function SignInForm() {
+  const router = useRouter();
   const [email, setEmail] = useState("freelancer@clientvault.dev");
   const [password, setPassword] = useState("freelancer123");
   const [error, setError] = useState<string | null>(null);
 
-  async function onSubmit(formData: FormData) {
-    const nextEmail = String(formData.get("email") ?? "");
-    const nextPassword = String(formData.get("password") ?? "");
+  async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
     const response = await signIn("credentials", {
-      email: nextEmail,
-      password: nextPassword,
+      email,
+      password,
       redirect: false,
+      callbackUrl: "/dashboard",
     });
 
     if (response?.error) {
@@ -22,11 +25,11 @@ export function SignInForm() {
       return;
     }
 
-    window.location.href = "/dashboard";
+    router.push("/dashboard");
   }
 
   return (
-    <form action={onSubmit} className="mt-4 space-y-4">
+    <form onSubmit={onSubmit} className="mt-4 space-y-4">
       <label className="block text-sm">
         Email
         <input
