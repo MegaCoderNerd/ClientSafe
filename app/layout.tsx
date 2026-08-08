@@ -9,7 +9,7 @@ export const metadata: Metadata = {
   title: "ClientVault",
   description: "Secure digital asset delivery for freelancers and clients.",
   icons: {
-  icon: "/logo.png?v=5",
+    icon: "/favicon.ico",
   },
 };
 
