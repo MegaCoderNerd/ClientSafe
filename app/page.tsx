@@ -34,7 +34,10 @@ export default async function HomePage() {
   const [clients, clientProjects, freelancerProjects] = await Promise.all([
     prisma.user.findMany({ where: { NOT: { id: session.user.id } }, orderBy: { email: "asc" } }),
     prisma.deliveryProject.findMany({
-      where: { clientId: session.user.id },
+      where: { 
+        clientId: session.user.id,
+        freelancerId: { not: session.user.id }
+      },
       include: { freelancer: true, asset: true },
       orderBy: { title: "asc" },
     }),
@@ -110,10 +113,10 @@ export default async function HomePage() {
       </section>
 
       {/* Your Vaults Section (Freelancer Created) */}
-      {freelancerProjects.length > 0 ? (
-        <section className="rounded-xl border bg-white p-6 shadow-sm">
-          <h2 className="text-2xl font-semibold mb-4">Your Vaults</h2>
-          <p className="text-sm text-slate-600 mb-4">Vaults you created for your clients.</p>
+      <section className="rounded-xl border bg-white p-6 shadow-sm">
+        <h2 className="text-2xl font-semibold mb-4">Your Vaults</h2>
+        <p className="text-sm text-slate-600 mb-4">Vaults you created for your clients.</p>
+        {freelancerProjects.length > 0 ? (
           <ul className="space-y-4">
             {freelancerProjects.map((project) => (
               <li key={project.id} className="rounded-md border p-4 hover:bg-slate-50 transition">
@@ -133,14 +136,16 @@ export default async function HomePage() {
               </li>
             ))}
           </ul>
-        </section>
-      ) : null}
+        ) : (
+          <p className="text-slate-600 text-sm">You haven't created any vaults yet. Start by filling the form above!</p>
+        )}
+      </section>
 
       {/* Invited Vaults Section (Client Invitations) */}
-      {clientProjects.length > 0 ? (
-        <section className="rounded-xl border bg-white p-6 shadow-sm">
-          <h2 className="text-2xl font-semibold mb-4">Vaults Shared With You</h2>
-          <p className="text-sm text-slate-600 mb-4">Vaults that have been shared with you as a client.</p>
+      <section className="rounded-xl border bg-white p-6 shadow-sm">
+        <h2 className="text-2xl font-semibold mb-4">Vaults Shared With You</h2>
+        <p className="text-sm text-slate-600 mb-4">Vaults that have been shared with you as a client.</p>
+        {clientProjects.length > 0 ? (
           <ul className="space-y-4">
             {clientProjects.map((project) => {
               const previewUrl = project.asset ? getPreviewAssetUrl(project.asset.previewUrl) : null;
@@ -179,15 +184,10 @@ export default async function HomePage() {
               );
             })}
           </ul>
-        </section>
-      ) : null}
-
-      {/* Empty State */}
-      {freelancerProjects.length === 0 && clientProjects.length === 0 ? (
-        <section className="rounded-xl border border-dashed bg-slate-50 p-8 text-center">
-          <p className="text-slate-600">No vaults yet. Create your first vault above.</p>
-        </section>
-      ) : null}
+        ) : (
+          <p className="text-slate-600 text-sm">No vaults have been shared with you yet.</p>
+        )}
+      </section>
     </main>
   );
 }

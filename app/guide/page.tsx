@@ -1,6 +1,11 @@
+import Link from 'next/link';
+
 export default function GuidePage() {
   return (
     <main className="mx-auto max-w-3xl p-8 pb-16">
+      <Link href="/" className="inline-flex items-center text-blue-600 hover:text-blue-700 mb-6">
+        <span className="mr-2">←</span> Back to Dashboard
+      </Link>
       <h1 className="text-4xl font-bold mb-6">📖 How to Use ClientVault</h1>
 
       <div className="space-y-8">

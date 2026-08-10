@@ -1,4 +1,6 @@
+import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 
 type RouteContext = {
@@ -8,18 +10,30 @@ type RouteContext = {
 };
 
 export async function GET(request: Request, context: RouteContext) {
-  const localStorageToken = process.env.LOCAL_STORAGE_TOKEN ?? "mock-local-token";
-  const token = new URL(request.url).searchParams.get("token");
+  const session = await getServerSession(authOptions);
 
-  if (token !== localStorageToken) {
+  if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const assetId = (await context.params).assetId;
   const asset = await prisma.asset.findUnique({
-    where: { id: (await context.params).assetId },
+    where: { id: assetId },
+    include: { project: true },
   });
 
-  if (!asset || !asset.isUnlocked) {
+  if (!asset) {
+    return NextResponse.json({ error: "Asset not found" }, { status: 404 });
+  }
+
+  const isVaultOwner = asset.project.freelancerId === session.user.id;
+  const isPaid = asset.project.paymentStatus === "COMPLETED";
+
+  if (!isVaultOwner && !isPaid) {
+    return NextResponse.json({ error: "Unauthorized - payment required" }, { status: 403 });
+  }
+
+  if (!asset.isUnlocked && !isVaultOwner) {
     return NextResponse.json({ error: "Asset not available" }, { status: 404 });
   }
 
