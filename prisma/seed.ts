@@ -19,6 +19,8 @@ async function main() {
     where: { id: "demo-locked-project" },
     update: {
       paymentStatus: PaymentStatus.PENDING,
+      freelancerId: freelancer.id,
+      clientId: client.id,
     },
     create: {
       id: "demo-locked-project",
@@ -43,6 +45,8 @@ async function main() {
     where: { id: "demo-unlocked-project" },
     update: {
       paymentStatus: PaymentStatus.COMPLETED,
+      freelancerId: freelancer.id,
+      clientId: client.id,
     },
     create: {
       id: "demo-unlocked-project",

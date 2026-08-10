@@ -14,21 +14,32 @@ export const authOptions: NextAuthOptions = {
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
 
-        // Quick local fallback for demo user to avoid blocking development when DB/migrations are not ready.
-        if (
-          credentials.email === "demo@clientvault.dev" &&
-          credentials.password === "demo123"
-        ) {
-          return { id: "demo", email: "demo@clientvault.dev", name: "Demo User" };
-        }
-
         try {
           const user = await prisma.user.findUnique({ where: { email: credentials.email } });
+
+          // Prefer the persisted demo user so seeded projects and shared vaults resolve correctly.
+          if (
+            user &&
+            credentials.email === "demo@clientvault.dev" &&
+            credentials.password === "demo123"
+          ) {
+            return { id: user.id, email: user.email, name: user.name };
+          }
+
           if (!user) return null;
           if (user.password !== credentials.password) return null;
           return { id: user.id, email: user.email, name: user.name };
         } catch (error) {
           console.error("[auth] error", error);
+
+          // Keep the local demo flow usable if the database is unavailable.
+          if (
+            credentials.email === "demo@clientvault.dev" &&
+            credentials.password === "demo123"
+          ) {
+            return { id: "demo", email: "demo@clientvault.dev", name: "Demo User" };
+          }
+
           return null;
         }
       },
