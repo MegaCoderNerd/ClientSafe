@@ -16,10 +16,10 @@ export const authOptions: NextAuthOptions = {
 
         try {
           const { data: user, error } = await supabase
-            .from("User")
-            .select("*")
-            .eq("email", credentials.email)
-            .single();
+              .from("User")
+              .select("*")
+              .eq("email", credentials.email)
+              .single();
 
           if (error) {
             // Keep demo fallback
@@ -31,9 +31,9 @@ export const authOptions: NextAuthOptions = {
 
           // Prefer the persisted demo user so seeded projects and shared vaults resolve correctly.
           if (
-            user &&
-            credentials.email === "demo@clientvault.dev" &&
-            credentials.password === "demo123"
+              user &&
+              credentials.email === "demo@clientvault.dev" &&
+              credentials.password === "demo123"
           ) {
             return { id: user.id, email: user.email, name: user.name };
           }

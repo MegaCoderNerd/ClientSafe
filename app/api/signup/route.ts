@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
+import { randomUUID } from "crypto";
 
 export async function POST(req: Request) {
   try {
@@ -15,10 +16,15 @@ export async function POST(req: Request) {
     }
 
     const { data: user, error } = await supabase
-      .from("User")
-      .insert({ email, name, password })
-      .select("id, email, name")
-      .single();
+        .from("User")
+        .insert({
+          id: randomUUID(), // הוספת מזהה ייחודי למניעת שגיאת השרת
+          email,
+          name,
+          password
+        })
+        .select("id, email, name")
+        .single();
 
     if (error || !user) {
       console.error("/api/signup error", error);
