@@ -1,7 +1,7 @@
-import { prisma } from "@/lib/prisma";
 import { getStripeClient } from "@/lib/stripe";
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
+import { supabase } from "@/lib/supabase";
 
 export async function POST(request: Request) {
   const signature = request.headers.get("stripe-signature");
@@ -26,17 +26,9 @@ export async function POST(request: Request) {
     const projectId = session.metadata?.projectId;
 
     if (projectId) {
-      await prisma.deliveryProject.update({
-        where: { id: projectId },
-        data: {
-          paymentStatus: "COMPLETED",
-          asset: {
-            update: {
-              isUnlocked: true,
-            },
-          },
-        },
-      });
+      // Mark project as paid and unlock asset
+      await supabase.from("DeliveryProject").update({ paymentStatus: "COMPLETED" }).eq("id", projectId);
+      await supabase.from("Asset").update({ isUnlocked: true }).eq("projectId", projectId);
     }
   }
 

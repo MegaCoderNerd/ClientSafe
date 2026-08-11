@@ -1,7 +1,8 @@
 import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { supabase } from "@/lib/supabase";
 import { createProtectedDownloadLink, getPreviewAssetUrl } from "@/lib/storage";
 import { PayButton } from "@/app/p/[projectId]/pay-button";
+import { Chat } from "@/components/chat";
 import Image from "next/image";
 import Link from "next/link";
 import { getServerSession } from "next-auth";
@@ -17,12 +18,19 @@ export default async function ClientPreviewPage({ params }: Props) {
   const { projectId } = await params;
   const session = await getServerSession(authOptions);
 
-  const project = await prisma.deliveryProject.findUnique({
-    where: { id: projectId },
-    include: { freelancer: true, asset: true },
-  });
+  // Fetch project and related data from Supabase
+  const { data: project, error } = await supabase
+    .from("DeliveryProject")
+    .select(`
+      *,
+      freelancer:User (id, name),
+      client:User (id, name),
+      asset:Asset (*)
+    `)
+    .eq("id", projectId)
+    .single();
 
-  if (!project || !project.asset) {
+  if (error || !project || !project.asset) {
     notFound();
   }
 
@@ -41,7 +49,7 @@ export default async function ClientPreviewPage({ params }: Props) {
       <section className="rounded-xl border bg-white p-6 shadow-sm">
         <h1 className="text-2xl font-semibold">{project.title}</h1>
         <p className="mt-2 text-slate-700">{project.description}</p>
-        <p className="mt-4 text-sm text-slate-600">Freelancer: {project.freelancer.name}</p>
+        <p className="mt-4 text-sm text-slate-600">Freelancer: {project.freelancer?.name}</p>
         <p className="text-sm text-slate-600">Price: {(project.price / 100).toFixed(2)} {project.currency.toUpperCase()}</p>
         {isVaultOwner && <p className="text-sm text-slate-600">Payment Status: {project.paymentStatus}</p>}
       </section>
@@ -79,6 +87,12 @@ export default async function ClientPreviewPage({ params }: Props) {
           <PayButton projectId={project.id} />
         )}
       </section>
+
+      <Chat
+        projectId={project.id}
+        currentUserId={session?.user?.id || ""}
+        otherUserName={isVaultOwner ? project.client?.name : project.freelancer?.name}
+      />
     </main>
   );
 }

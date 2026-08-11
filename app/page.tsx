@@ -1,11 +1,10 @@
 import { createProject } from "@/app/actions";
 import { authOptions } from "@/lib/auth";
 import { createProtectedDownloadLink, getPreviewAssetUrl } from "@/lib/storage";
-import { prisma } from "@/lib/prisma";
+import { supabase } from "@/lib/supabase";
 import { getServerSession } from "next-auth";
 import Image from "next/image";
 import Link from "next/link";
-import { redirect } from "next/navigation";
 
 export default async function HomePage() {
   const session = await getServerSession(authOptions);
@@ -31,21 +30,10 @@ export default async function HomePage() {
   }
 
   // Fetch all data for authenticated users
-  const [clients, clientProjects, freelancerProjects] = await Promise.all([
-    prisma.user.findMany({ where: { NOT: { id: session.user.id } }, orderBy: { email: "asc" } }),
-    prisma.deliveryProject.findMany({
-      where: { 
-        clientId: session.user.id,
-        freelancerId: { not: session.user.id }
-      },
-      include: { freelancer: true, asset: true },
-      orderBy: { title: "asc" },
-    }),
-    prisma.deliveryProject.findMany({
-      where: { freelancerId: session.user.id },
-      include: { client: true, asset: true },
-      orderBy: { title: "asc" },
-    }),
+  const [{ data: clients }, { data: clientProjects }, { data: freelancerProjects }] = await Promise.all([
+    supabase.from("User").select("id, name, email").not("id", "eq", session.user.id).order("email", { ascending: true }),
+    supabase.from("DeliveryProject").select("*, freelancer:User(*), asset:Asset(*)").eq("clientId", session.user.id).order("title", { ascending: true }),
+    supabase.from("DeliveryProject").select("*, client:User(*), asset:Asset(*)").eq("freelancerId", session.user.id).order("title", { ascending: true }),
   ]);
 
   return (
@@ -63,10 +51,10 @@ export default async function HomePage() {
         <form action={createProject} className="grid gap-4 md:grid-cols-2">
           <label className="flex flex-col gap-2 text-sm">
             Client
-            {clients.length > 0 ? (
+            {clients && clients.length > 0 ? (
               <select name="clientId" required className="rounded-md border p-2">
                 <option value="">Select a client...</option>
-                {clients.map((client) => (
+                {clients.map((client: any) => (
                   <option key={client.id} value={client.id}>
                     {client.name} ({client.email})
                   </option>
@@ -104,7 +92,7 @@ export default async function HomePage() {
           </label>
           <button
             type="submit"
-            disabled={clients.length === 0}
+            disabled={!clients || clients.length === 0}
             className="rounded-md bg-slate-900 px-4 py-2 text-white disabled:cursor-not-allowed disabled:opacity-60 md:col-span-2 font-medium"
           >
             Create Vault
@@ -116,9 +104,9 @@ export default async function HomePage() {
       <section className="rounded-xl border bg-white p-6 shadow-sm">
         <h2 className="text-2xl font-semibold mb-4">Your Vaults</h2>
         <p className="text-sm text-slate-600 mb-4">Vaults you created for your clients.</p>
-        {freelancerProjects.length > 0 ? (
+        {freelancerProjects && freelancerProjects.length > 0 ? (
           <ul className="space-y-4">
-            {freelancerProjects.map((project) => (
+            {freelancerProjects.map((project: any) => (
               <li key={project.id} className="rounded-md border p-4 hover:bg-slate-50 transition">
                 <div className="flex justify-between items-start">
                   <div className="flex-1">
@@ -145,9 +133,9 @@ export default async function HomePage() {
       <section className="rounded-xl border bg-white p-6 shadow-sm">
         <h2 className="text-2xl font-semibold mb-4">Vaults Shared With You</h2>
         <p className="text-sm text-slate-600 mb-4">Vaults that have been shared with you as a client.</p>
-        {clientProjects.length > 0 ? (
+        {clientProjects && clientProjects.length > 0 ? (
           <ul className="space-y-4">
-            {clientProjects.map((project) => {
+            {clientProjects.map((project: any) => {
               const previewUrl = project.asset ? getPreviewAssetUrl(project.asset.previewUrl) : null;
               const protectedDownloadUrl = project.asset ? createProtectedDownloadLink(project.asset.id) : null;
 

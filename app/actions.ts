@@ -1,9 +1,9 @@
 "use server";
 
-import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
+import { supabase } from "@/lib/supabase";
 
 export async function createProject(formData: FormData) {
   const session = await getServerSession(authOptions);
@@ -33,22 +33,33 @@ export async function createProject(formData: FormData) {
     throw new Error("Please provide valid vault and asset details.");
   }
 
-  await prisma.deliveryProject.create({
-    data: {
+  // Create the project, then the asset in Supabase.
+  const { data: project, error: projectError } = await supabase
+    .from("DeliveryProject")
+    .insert({
       title,
       description,
       currency,
       price: Math.round(priceInDollars * 100),
       freelancerId: session.user.id,
       clientId,
-      asset: {
-        create: {
-          previewUrl,
-          originalFileUrl,
-        },
-      },
-    },
+    })
+    .select("id")
+    .single();
+
+  if (projectError || !project) {
+    throw new Error("Failed to create project");
+  }
+
+  const { error: assetError } = await supabase.from("Asset").insert({
+    projectId: project.id,
+    previewUrl,
+    originalFileUrl,
   });
+
+  if (assetError) {
+    throw new Error("Failed to create asset");
+  }
 
   revalidatePath("/");
 }

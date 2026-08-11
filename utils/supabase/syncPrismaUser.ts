@@ -1,9 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { prisma } from "@/lib/prisma";
 
-// Ensure a Prisma user exists for the current Supabase authenticated user.
-// Call this from Server Components or API routes after creating the server Supabase client.
-export async function ensurePrismaUserFromSupabase(supabase: SupabaseClient) {
+// Ensure a row exists in the User table for the current Supabase authenticated user.
+export async function ensureUserRowFromSupabase(supabase: SupabaseClient) {
   const { data, error } = await supabase.auth.getUser();
   if (error) return null;
   const user = data?.user;
@@ -13,39 +11,19 @@ export async function ensurePrismaUserFromSupabase(supabase: SupabaseClient) {
   const email = user.email;
   const name = (user.user_metadata as any)?.name ?? (user.user_metadata as any)?.full_name ?? undefined;
 
-  // Prefer matching by externalId, then by email. If no match, create.
-  let existing = null;
-  try {
-    existing = await prisma.user.findUnique({ where: { externalId } });
-  } catch (_) {
-    // If Prisma client isn't migrated to include externalId yet, fallback to email lookup.
-    existing = null;
-  }
-
-  if (!existing && email) {
-    existing = await prisma.user.findUnique({ where: { email } }).catch(() => null);
-  }
-
-  if (existing) {
-    return prisma.user.update({
-      where: { id: existing.id },
-      data: {
-        externalId,
-        email: email ?? existing.email,
-        name: name ?? existing.name,
-      },
-    });
-  }
-
-  // Create new user (Supabase users normally have emails)
   if (!email) return null;
 
-  return prisma.user.create({
-    data: {
-      externalId,
-      email,
-      name: name ?? "",
-      password: null,
-    },
-  });
+  // Try to find by externalId or email, otherwise create.
+  const { data: existingByExternal } = await supabase.from("User").select("id").eq("externalId", externalId).single().catch(() => ({ data: null }));
+  if (existingByExternal && existingByExternal.id) return existingByExternal;
+
+  const { data: existingByEmail } = await supabase.from("User").select("id").eq("email", email).single().catch(() => ({ data: null }));
+  if (existingByEmail && existingByEmail.id) {
+    // update externalId if missing
+    await supabase.from("User").update({ externalId }).eq("id", existingByEmail.id);
+    return existingByEmail;
+  }
+
+  const { data: created } = await supabase.from("User").insert({ externalId, email, name: name ?? "" }).select("id").single().catch(() => ({ data: null }));
+  return created;
 }

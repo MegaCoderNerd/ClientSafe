@@ -1,6 +1,6 @@
-import { prisma } from "@/lib/prisma";
 import { getStripeClient } from "@/lib/stripe";
 import { NextResponse } from "next/server";
+import { supabase } from "@/lib/supabase";
 
 type CheckoutPayload = {
   projectId?: string;
@@ -13,12 +13,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "projectId is required" }, { status: 400 });
   }
 
-  const project = await prisma.deliveryProject.findUnique({
-    where: { id: body.projectId },
-    include: { asset: true },
-  });
+  const { data: project, error: projErr } = await supabase
+    .from("DeliveryProject")
+    .select("*, asset:Asset(*)")
+    .eq("id", body.projectId)
+    .single();
 
-  if (!project || !project.asset) {
+  if (projErr || !project || !project.asset) {
     return NextResponse.json({ error: "Project not found" }, { status: 404 });
   }
 

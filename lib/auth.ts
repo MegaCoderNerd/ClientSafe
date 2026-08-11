@@ -1,6 +1,6 @@
 import type { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
-import { prisma } from "@/lib/prisma";
+import { supabase } from "@/lib/supabase";
 
 export const authOptions: NextAuthOptions = {
   session: { strategy: "jwt" },
@@ -15,7 +15,19 @@ export const authOptions: NextAuthOptions = {
         if (!credentials?.email || !credentials?.password) return null;
 
         try {
-          const user = await prisma.user.findUnique({ where: { email: credentials.email } });
+          const { data: user, error } = await supabase
+            .from("User")
+            .select("*")
+            .eq("email", credentials.email)
+            .single();
+
+          if (error) {
+            // Keep demo fallback
+            if (credentials.email === "demo@clientvault.dev" && credentials.password === "demo123") {
+              return { id: "demo", email: "demo@clientvault.dev", name: "Demo User" };
+            }
+            return null;
+          }
 
           // Prefer the persisted demo user so seeded projects and shared vaults resolve correctly.
           if (
@@ -32,11 +44,7 @@ export const authOptions: NextAuthOptions = {
         } catch (error) {
           console.error("[auth] error", error);
 
-          // Keep the local demo flow usable if the database is unavailable.
-          if (
-            credentials.email === "demo@clientvault.dev" &&
-            credentials.password === "demo123"
-          ) {
+          if (credentials.email === "demo@clientvault.dev" && credentials.password === "demo123") {
             return { id: "demo", email: "demo@clientvault.dev", name: "Demo User" };
           }
 

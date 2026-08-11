@@ -1,7 +1,7 @@
 import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
+import { supabase } from "@/lib/supabase";
 
 type RouteContext = {
   params: Promise<{
@@ -17,12 +17,13 @@ export async function GET(request: Request, context: RouteContext) {
   }
 
   const assetId = (await context.params).assetId;
-  const asset = await prisma.asset.findUnique({
-    where: { id: assetId },
-    include: { project: true },
-  });
+  const { data: asset, error } = await supabase
+    .from("Asset")
+    .select("*, project:DeliveryProject(*)")
+    .eq("id", assetId)
+    .single();
 
-  if (!asset) {
+  if (error || !asset) {
     return NextResponse.json({ error: "Asset not found" }, { status: 404 });
   }
 
