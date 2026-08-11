@@ -7,7 +7,7 @@ export function SiteHeader() {
   const { data: session } = useSession();
 
   return (
-    <header className="w-full border-b bg-white relative h-16">
+    <header className="w-full border-b bg-white sticky top-0 z-50 h-16">
       <div className="absolute left-0 top-0 flex items-center h-16 pl-4">
         <Link href="/" className="flex items-center gap-3">
           <img src="/logo.png?v=5" alt="ClientVault logo" className="w-10 h-10 object-contain" />

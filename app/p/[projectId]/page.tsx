@@ -2,97 +2,109 @@ import { authOptions } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
 import { createProtectedDownloadLink, getPreviewAssetUrl } from "@/lib/storage";
 import { PayButton } from "@/app/p/[projectId]/pay-button";
-import { Chat } from "@/components/chat";
+import { Chat } from "@/components/chat"; // ייבוא תקין עם סוגריים מסולסלים
 import Image from "next/image";
 import Link from "next/link";
 import { getServerSession } from "next-auth";
 import { notFound } from "next/navigation";
 
 type Props = {
-  params: Promise<{
-    projectId: string;
-  }>;
+    params: Promise<{
+        projectId: string;
+    }>;
 };
 
 export default async function ClientPreviewPage({ params }: Props) {
-  const { projectId } = await params;
-  const session = await getServerSession(authOptions);
+    const { projectId } = await params;
+    const session = await getServerSession(authOptions);
+    const currentUserId = session?.user?.id;
 
-  // Fetch project and related data from Supabase
-  const { data: project, error } = await supabase
-    .from("DeliveryProject")
-    .select(`
-      *,
-      freelancer:User (id, name),
-      client:User (id, name),
-      asset:Asset (*)
-    `)
-    .eq("id", projectId)
-    .single();
+    if (!currentUserId) {
+        notFound();
+    }
 
-  if (error || !project || !project.asset) {
-    notFound();
-  }
+    // שולף את נתוני הפרויקט, כולל נתוני הפרילנסר ונתוני הלקוח כדי שנוכל להציג את השם בצ'אט
+    const { data: projectData, error } = await supabase
+        .from("DeliveryProject")
+        .select("*, freelancer:User!freelancerId(*), client:User!clientId(*), asset:Asset(*)")
+        .eq("id", projectId)
+        .single();
 
-  const previewUrl = getPreviewAssetUrl(project.asset.previewUrl);
-  const protectedDownloadUrl = createProtectedDownloadLink(project.asset.id);
-  
-  // Check if the current user is the vault owner (freelancer)
-  const isVaultOwner = session?.user?.id === project.freelancerId;
+    if (error || !projectData) {
+        notFound();
+    }
 
-  return (
-    <main className="mx-auto flex max-w-4xl flex-col gap-6 p-8">
-      <Link href="/" className="inline-flex items-center text-blue-600 hover:text-blue-700 mb-4">
-        <span className="mr-2">←</span> Back to Dashboard
-      </Link>
+    // נרמול הנתונים שחוזרים מ-Supabase
+    const assetData = Array.isArray(projectData.asset) ? projectData.asset[0] : projectData.asset;
+    const freelancerData = Array.isArray(projectData.freelancer) ? projectData.freelancer[0] : projectData.freelancer;
+    const clientData = Array.isArray(projectData.client) ? projectData.client[0] : projectData.client;
 
-      <section className="rounded-xl border bg-white p-6 shadow-sm">
-        <h1 className="text-2xl font-semibold">{project.title}</h1>
-        <p className="mt-2 text-slate-700">{project.description}</p>
-        <p className="mt-4 text-sm text-slate-600">Freelancer: {project.freelancer?.name}</p>
-        <p className="text-sm text-slate-600">Price: {(project.price / 100).toFixed(2)} {project.currency.toUpperCase()}</p>
-        {isVaultOwner && <p className="text-sm text-slate-600">Payment Status: {project.paymentStatus}</p>}
-      </section>
+    if (!assetData) {
+        notFound();
+    }
 
-      {isVaultOwner || project.paymentStatus === "COMPLETED" ? (
-        <section className="rounded-xl border bg-white p-6 shadow-sm">
-          <h2 className="text-xl font-semibold">Asset Preview</h2>
-          <div className="relative mt-4 aspect-video overflow-hidden rounded-lg border bg-slate-100">
-            <Image src={previewUrl} alt={`${project.title} preview`} fill className="object-cover" unoptimized />
-          </div>
-        </section>
-      ) : (
-        <section className="rounded-xl border bg-white p-6 shadow-sm">
-          <h2 className="text-xl font-semibold">Asset Preview</h2>
-          <div className="relative mt-4 aspect-video overflow-hidden rounded-lg border bg-slate-100">
-            <Image src={previewUrl} alt={`${project.title} preview`} fill className="object-cover" unoptimized />
-          </div>
-          <p className="mt-4 text-sm text-slate-600 italic">This is a watermarked preview. Purchase to download the full version.</p>
-        </section>
-      )}
+    const previewUrl = getPreviewAssetUrl(assetData.previewUrl);
+    const protectedDownloadUrl = createProtectedDownloadLink(assetData.id);
 
-      <section className="rounded-xl border bg-white p-6 shadow-sm">
-        {isVaultOwner ? (
-          <div className="space-y-3">
-            <p className="text-sm text-slate-600">This is your vault. Download your original asset:</p>
-            <Link href={protectedDownloadUrl} className="inline-block rounded-md bg-slate-900 px-4 py-2 text-white hover:bg-slate-800">
-              Download Original Asset
+    const isVaultOwner = currentUserId === projectData.freelancerId;
+
+    // הגדרת שם המשתמש השני עבור הצ'אט
+    const otherUserName = isVaultOwner ? clientData?.name : freelancerData?.name;
+
+    return (
+        <main className="mx-auto flex max-w-4xl flex-col gap-6 p-8">
+            <Link href="/" className="inline-flex items-center text-blue-600 hover:text-blue-700 mb-4">
+                <span className="mr-2">←</span> Back to Dashboard
             </Link>
-          </div>
-        ) : project.paymentStatus === "COMPLETED" && project.asset.isUnlocked ? (
-          <Link href={protectedDownloadUrl} className="inline-block rounded-md bg-slate-900 px-4 py-2 text-white hover:bg-slate-800">
-            Download Original Asset
-          </Link>
-        ) : (
-          <PayButton projectId={project.id} />
-        )}
-      </section>
 
-      <Chat
-        projectId={project.id}
-        currentUserId={session?.user?.id || ""}
-        otherUserName={isVaultOwner ? project.client?.name : project.freelancer?.name}
-      />
-    </main>
-  );
+            <section className="rounded-xl border bg-white p-6 shadow-sm">
+                <h1 className="text-2xl font-semibold">{projectData.title}</h1>
+                <p className="mt-2 text-slate-700">{projectData.description}</p>
+                <p className="mt-4 text-sm text-slate-600">Freelancer: {freelancerData?.name}</p>
+                <p className="text-sm text-slate-600">Price: {(projectData.price / 100).toFixed(2)} {projectData.currency.toUpperCase()}</p>
+                {isVaultOwner && <p className="text-sm text-slate-600">Payment Status: {projectData.paymentStatus}</p>}
+            </section>
+
+            {isVaultOwner || projectData.paymentStatus === "COMPLETED" ? (
+                <section className="rounded-xl border bg-white p-6 shadow-sm">
+                    <h2 className="text-xl font-semibold">Asset Preview</h2>
+                    <div className="relative mt-4 aspect-video overflow-hidden rounded-lg border bg-slate-100">
+                        <Image src={previewUrl} alt={`${projectData.title} preview`} fill className="object-cover" unoptimized />
+                    </div>
+                </section>
+            ) : (
+                <section className="rounded-xl border bg-white p-6 shadow-sm">
+                    <h2 className="text-xl font-semibold">Asset Preview</h2>
+                    <div className="relative mt-4 aspect-video overflow-hidden rounded-lg border bg-slate-100">
+                        <Image src={previewUrl} alt={`${projectData.title} preview`} fill className="object-cover" unoptimized />
+                    </div>
+                    <p className="mt-4 text-sm text-slate-600 italic">This is a watermarked preview. Purchase to download the full version.</p>
+                </section>
+            )}
+
+            <section className="rounded-xl border bg-white p-6 shadow-sm">
+                {isVaultOwner ? (
+                    <div className="space-y-3">
+                        <p className="text-sm text-slate-600">This is your vault. Download your original asset:</p>
+                        <Link href={protectedDownloadUrl} className="inline-block rounded-md bg-slate-900 px-4 py-2 text-white hover:bg-slate-800">
+                            Download Original Asset
+                        </Link>
+                    </div>
+                ) : projectData.paymentStatus === "COMPLETED" && assetData.isUnlocked ? (
+                    <Link href={protectedDownloadUrl} className="inline-block rounded-md bg-slate-900 px-4 py-2 text-white hover:bg-slate-800">
+                        Download Original Asset
+                    </Link>
+                ) : (
+                    <PayButton projectId={projectData.id} />
+                )}
+            </section>
+
+            {/* רכיב הצ'אט המעודכן */}
+            <Chat
+                projectId={projectData.id}
+                currentUserId={currentUserId}
+                otherUserName={otherUserName || "User"}
+            />
+        </main>
+    );
 }

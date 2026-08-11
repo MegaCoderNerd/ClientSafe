@@ -1,7 +1,8 @@
 import { authOptions } from "@/lib/auth";
-import { supabase } from "@/lib/supabase"; // Make sure this path matches your Supabase client export
+import { supabase } from "@/lib/supabase";
 import { getServerSession } from "next-auth";
 import { NextRequest, NextResponse } from "next/server";
+import { randomUUID } from "crypto";
 
 export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -32,12 +33,12 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  // Fetch messages with sender details included
+  // Fetch messages with explicit foreign key to the sender
   const { data: messages, error: messagesError } = await supabase
       .from("ChatMessage")
       .select(`
       *,
-      sender:User (
+      sender:User!senderId (
         id,
         name,
         email
@@ -82,17 +83,18 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  // Insert the new message and return it with sender details
+  // Insert the new message with an explicitly generated UUID
   const { data: message, error: insertError } = await supabase
       .from("ChatMessage")
       .insert({
+        id: randomUUID(),
         projectId,
         senderId: session.user.id,
         content: content.trim(),
       })
       .select(`
       *,
-      sender:User (
+      sender:User!senderId (
         id,
         name,
         email
