@@ -10,10 +10,14 @@ export function SignInForm() {
     const [password, setPassword] = useState("");
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [isEmailUnverified, setIsEmailUnverified] = useState(false);
+    const [resendStatus, setResendStatus] = useState<string | null>(null);
 
     async function handleLogin(targetEmail: string, targetPass: string) {
         setLoading(true);
         setError(null);
+        setIsEmailUnverified(false);
+        setResendStatus(null);
 
         const res = await signIn("credentials", {
             email: targetEmail,
@@ -24,10 +28,42 @@ export function SignInForm() {
         setLoading(false);
 
         if (res?.error) {
-            setError("Invalid email or password. Please try again.");
+            // בדיקה האם השגיאה קשורה לאימייל שלא אומת
+            if (res.error.includes("EmailNotConfirmed") || res.error.includes("CredentialsSignin")) {
+                // נבדוק מול Supabase דרך ה-API או ניחוש מושכל לפי סטטוס
+                // לצורך הפשטות נציג את האפשרות אם ההתחברות נכשלה למשתמש רשום
+                setError("Invalid email or password, or your email has not been verified yet.");
+                setIsEmailUnverified(true);
+            } else {
+                setError("Invalid email or password. Please try again.");
+            }
         } else {
             router.push("/");
             router.refresh();
+        }
+    }
+
+    async function handleResendVerification() {
+        if (!email) {
+            setResendStatus("Please enter your email first.");
+            return;
+        }
+        setResendStatus(null);
+        try {
+            const res = await fetch("/auth/resend/", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email }),
+            });
+            const data = await res.json();
+            if (res.ok) {
+                setResendStatus("Verification email resent successfully! Check your inbox.");
+            } else {
+                setResendStatus(data.error || "Failed to resend verification email.");
+            }
+        } catch (err: any) {
+            console.error(err);
+            setResendStatus(err?.message || "An error occurred. Please try again.");
         }
     }
 
@@ -38,7 +74,6 @@ export function SignInForm() {
 
     return (
         <div className="mt-6 space-y-6">
-            {/* טופס התחברות רגיל */}
             <form onSubmit={onSubmit} className="space-y-4">
                 <label className="block text-sm">
                     Email
@@ -71,13 +106,55 @@ export function SignInForm() {
                 </button>
 
                 {error && (
-                    <p className="text-sm text-red-600 font-medium">
-                        {error}
-                    </p>
+                    <div className="space-y-2">
+                        <p className="text-sm text-red-600 font-medium">{error}</p>
+                        {isEmailUnverified && (
+                            <button
+                                type="button"
+                                onClick={handleResendVerification}
+                                className="text-xs text-blue-600 underline hover:text-blue-800 block font-medium"
+                            >
+                                Resend verification email
+                            </button>
+                        )}
+                    </div>
                 )}
+
+                {resendStatus && (
+                    <p className="text-sm text-green-600 font-medium">{resendStatus}</p>
+                )}
+
+                <div className="flex justify-between items-center text-xs mt-1">
+                    <button
+                        type="button"
+                        onClick={async () => {
+                            if (!email) {
+                                setResendStatus("Please enter your email first to reset password.");
+                                return;
+                            }
+                            try {
+                                const res = await fetch("/auth/reset-password/", {
+                                    method: "POST",
+                                    headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({ email }),
+                                });
+                                const data = await res.json();
+                                if (res.ok) {
+                                    setResendStatus("Password reset email sent! Check your inbox.");
+                                } else {
+                                    setResendStatus(data.error || "Failed to send reset email.");
+                                }
+                            } catch (err) {
+                                setResendStatus("An error occurred.");
+                            }
+                        }}
+                        className="text-blue-600 underline hover:text-blue-800 cursor-pointer"
+                    >
+                        Forgot password?
+                    </button>
+                </div>
             </form>
 
-            {/* אזור כפתורי כניסת דמו */}
             <div className="border-t pt-4 space-y-3">
                 <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">
                     Demo Accounts
@@ -99,6 +176,7 @@ export function SignInForm() {
                     >
                         👤 Client Demo
                     </button>
+
                 </div>
             </div>
         </div>

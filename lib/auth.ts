@@ -14,56 +14,42 @@ export const authOptions: NextAuthOptions = {
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
 
-        try {
-          const { data: user, error } = await supabase
-              .from("User")
-              .select("*")
-              .eq("email", credentials.email)
-              .single();
+        const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+          email: credentials.email,
+          password: credentials.password,
+        });
 
-          if (error) {
-            // Keep demo fallback
-            if (credentials.email === "demo@clientvault.dev" && credentials.password === "demo123") {
-              return { id: "demo", email: "demo@clientvault.dev", name: "Demo User" };
-            }
-            return null;
+        if (authError) {
+          if (authError.message.includes("Email not confirmed")) {
+            throw new Error("EmailNotConfirmed");
           }
-
-          // Prefer the persisted demo user so seeded projects and shared vaults resolve correctly.
-          if (
-              user &&
-              credentials.email === "demo@clientvault.dev" &&
-              credentials.password === "demo123"
-          ) {
-            return { id: user.id, email: user.email, name: user.name };
-          }
-
-          if (!user) return null;
-          if (user.password !== credentials.password) return null;
-          return { id: user.id, email: user.email, name: user.name };
-        } catch (error) {
-          console.error("[auth] error", error);
-
           if (credentials.email === "demo@clientvault.dev" && credentials.password === "demo123") {
             return { id: "demo", email: "demo@clientvault.dev", name: "Demo User" };
           }
-
           return null;
         }
+
+        const { data: publicUser } = await supabase
+            .from("User")
+            .select("*")
+            .eq("email", credentials.email)
+            .single();
+
+        return {
+          id: publicUser?.id || authData.user.id,
+          email: authData.user.email!,
+          name: publicUser?.name || "User"
+        };
       },
     }),
   ],
   callbacks: {
     jwt({ token, user }) {
-      if (user) {
-        token.sub = user.id;
-      }
+      if (user) token.sub = user.id;
       return token;
     },
     session({ session, token }) {
-      if (session.user && token.sub) {
-        session.user.id = token.sub;
-      }
+      if (session.user && token.sub) session.user.id = token.sub;
       return session;
     },
   },
