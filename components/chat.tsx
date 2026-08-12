@@ -108,19 +108,20 @@ export function Chat({ projectId, currentUserId, otherUserName }: ChatProps) {
   };
 
   return (
-      <div className="flex flex-col gap-4 rounded-xl border bg-white p-6 shadow-sm h-[500px]">
+      // Using h-full to fill the parent container
+      <div className="flex h-full flex-col gap-4 rounded-xl border bg-white p-6 shadow-sm">
         <h2 className="text-xl font-semibold">Chat with {otherUserName}</h2>
 
         <div
             ref={chatContainerRef}
-            className="flex-1 overflow-y-auto border rounded-lg p-4 bg-slate-50 space-y-3"
+            className="flex-1 space-y-3 overflow-y-auto rounded-lg border bg-slate-50 p-4"
         >
           {isLoadingMessages ? (
-              <div className="flex items-center justify-center h-full text-slate-500">
+              <div className="flex h-full items-center justify-center text-slate-500">
                 Loading messages...
               </div>
           ) : messages.length === 0 ? (
-              <div className="flex items-center justify-center h-full text-slate-500">
+              <div className="flex h-full items-center justify-center text-slate-500">
                 No messages yet. Start a conversation!
               </div>
           ) : (
@@ -130,14 +131,14 @@ export function Chat({ projectId, currentUserId, otherUserName }: ChatProps) {
                       className={`flex ${message.senderId === currentUserId ? "justify-end" : "justify-start"}`}
                   >
                     <div
-                        className={`max-w-xs px-4 py-2 rounded-lg ${
+                        className={`max-w-[85%] break-words rounded-lg px-4 py-2 ${
                             message.senderId === currentUserId
                                 ? "bg-blue-500 text-white"
                                 : "bg-slate-200 text-slate-900"
                         }`}
                     >
                       <p className="text-sm">{message.content}</p>
-                      <p className="text-xs mt-1 opacity-75">
+                      <p className="mt-1 text-xs opacity-75">
                         {new Date(message.createdAt).toLocaleTimeString()}
                       </p>
                     </div>
@@ -158,7 +159,7 @@ export function Chat({ projectId, currentUserId, otherUserName }: ChatProps) {
           <button
               type="submit"
               disabled={loading || !input.trim()}
-              className="rounded-lg bg-blue-500 px-4 py-2 text-white text-sm font-medium hover:bg-blue-600 disabled:bg-slate-300 disabled:cursor-not-allowed"
+              className="rounded-lg bg-blue-500 px-4 py-2 text-sm font-medium text-white hover:bg-blue-600 disabled:cursor-not-allowed disabled:bg-slate-300"
           >
             {loading ? "Sending..." : "Send"}
           </button>
