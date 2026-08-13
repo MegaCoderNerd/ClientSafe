@@ -14,7 +14,17 @@ export const authOptions: NextAuthOptions = {
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
 
-        const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        // 1. שליפת המידע הרשמי מתוך טבלת User הציבורית
+        const { data: dbUser, error: dbError } = await supabase
+            .from("User")
+            .select("*")
+            .eq("email", credentials.email)
+            .single();
+
+        if (dbError || !dbUser) return null;
+
+        // 2. אימות הסיסמה מול מנגנון האבטחה של Supabase
+        const { error: authError } = await supabase.auth.signInWithPassword({
           email: credentials.email,
           password: credentials.password,
         });
@@ -23,33 +33,34 @@ export const authOptions: NextAuthOptions = {
           if (authError.message.includes("Email not confirmed")) {
             throw new Error("EmailNotConfirmed");
           }
-          if (credentials.email === "demo@clientvault.dev" && credentials.password === "demo123") {
-            return { id: "demo", email: "demo@clientvault.dev", name: "Demo User" };
-          }
           return null;
         }
 
-        const { data: publicUser } = await supabase
-            .from("User")
-            .select("*")
-            .eq("email", credentials.email)
-            .single();
+        // 3. ניקוי הסשן של Supabase בשרת כדי למנוע התנגשויות לאחר Logout
+        await supabase.auth.signOut();
 
+        // 4. החזרת המידע המדויק לתוך NextAuth
         return {
-          id: publicUser?.id || authData.user.id,
-          email: authData.user.email!,
-          name: publicUser?.name || "User"
+          id: dbUser.id,
+          email: dbUser.email,
+          name: dbUser.name
         };
       },
     }),
   ],
   callbacks: {
     jwt({ token, user }) {
-      if (user) token.sub = user.id;
+      if (user) {
+        token.sub = user.id;
+        token.name = user.name;
+      }
       return token;
     },
     session({ session, token }) {
-      if (session.user && token.sub) session.user.id = token.sub;
+      if (session.user) {
+        if (token.sub) session.user.id = token.sub;
+        if (token.name) session.user.name = token.name as string;
+      }
       return session;
     },
   },
