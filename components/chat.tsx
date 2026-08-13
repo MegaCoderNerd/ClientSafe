@@ -20,6 +20,41 @@ type ChatProps = {
   otherUserName: string;
 };
 
+// Helper function to format the message timestamp
+function formatMessageTime(dateInput: string | Date) {
+  // מוסיפים Z כדי להכריח המרה מ-UTC לזמן מקומי
+  const dateString = typeof dateInput === 'string' && !dateInput.endsWith('Z')
+      ? dateInput + 'Z'
+      : dateInput;
+
+  const date = new Date(dateString);
+  const now = new Date();
+  const yesterday = new Date();
+  yesterday.setDate(now.getDate() - 1);
+
+  // Format time (e.g., 12:06 AM)
+  const timeString = date.toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
+
+  // Compare dates
+  if (date.toDateString() === now.toDateString()) {
+    return `Today, ${timeString}`;
+  } else if (date.toDateString() === yesterday.toDateString()) {
+    return `Yesterday, ${timeString}`;
+  } else {
+    // Full date for older messages (e.g., 08/13/26)
+    const dateString = date.toLocaleDateString("en-US", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "2-digit",
+    });
+    return `${dateString}, ${timeString}`;
+  }
+}
+
 export function Chat({ projectId, currentUserId, otherUserName }: ChatProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -53,7 +88,6 @@ export function Chat({ projectId, currentUserId, otherUserName }: ChatProps) {
 
   useEffect(() => {
     fetchMessages();
-    setIsLoadingMessages(false);
 
     // Poll for new messages every 2 seconds
     pollIntervalRef.current = setInterval(() => {
@@ -139,7 +173,7 @@ export function Chat({ projectId, currentUserId, otherUserName }: ChatProps) {
                     >
                       <p className="text-sm">{message.content}</p>
                       <p className="mt-1 text-xs opacity-75">
-                        {new Date(message.createdAt).toLocaleTimeString()}
+                        {formatMessageTime(message.createdAt)}
                       </p>
                     </div>
                   </div>
