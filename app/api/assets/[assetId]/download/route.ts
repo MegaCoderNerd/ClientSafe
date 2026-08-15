@@ -1,12 +1,7 @@
 import { authOptions } from "@/lib/auth";
-import { resolveDeliverableFile, streamLocalFile } from "@/lib/file-delivery";
-import { getStockAssetByOriginalUrl } from "@/lib/stock-assets";
-import { supabase } from "@/lib/supabase";
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
-import path from "path";
-
-export const dynamic = "force-dynamic";
+import { supabase } from "@/lib/supabase";
 
 type RouteContext = {
   params: Promise<{
@@ -24,7 +19,7 @@ export async function GET(request: Request, context: RouteContext) {
   const assetId = (await context.params).assetId;
   const { data: asset, error } = await supabase
     .from("Asset")
-    .select("id, originalFileUrl, isUnlocked, project:DeliveryProject(freelancerId, paymentStatus)")
+    .select("*, project:DeliveryProject(*)")
     .eq("id", assetId)
     .single();
 
@@ -32,9 +27,8 @@ export async function GET(request: Request, context: RouteContext) {
     return NextResponse.json({ error: "Asset not found" }, { status: 404 });
   }
 
-  const project = Array.isArray(asset.project) ? asset.project[0] : asset.project;
-  const isVaultOwner = project.freelancerId === session.user.id;
-  const isPaid = project.paymentStatus === "COMPLETED";
+  const isVaultOwner = asset.project.freelancerId === session.user.id;
+  const isPaid = asset.project.paymentStatus === "COMPLETED";
 
   if (!isVaultOwner && !isPaid) {
     return NextResponse.json({ error: "Unauthorized - payment required" }, { status: 403 });
@@ -44,20 +38,5 @@ export async function GET(request: Request, context: RouteContext) {
     return NextResponse.json({ error: "Asset not available" }, { status: 404 });
   }
 
-  const localFile = resolveDeliverableFile(asset.originalFileUrl);
-  if (localFile) {
-    try {
-      const stock = getStockAssetByOriginalUrl(asset.originalFileUrl);
-      const fileName = stock?.originalFileName ?? path.basename(localFile);
-      return await streamLocalFile(localFile, fileName);
-    } catch {
-      return NextResponse.json({ error: "Asset file missing" }, { status: 404 });
-    }
-  }
-
-  const target = asset.originalFileUrl.startsWith("http")
-    ? asset.originalFileUrl
-    : new URL(asset.originalFileUrl, request.url).toString();
-
-  return NextResponse.redirect(target);
+  return NextResponse.redirect(asset.originalFileUrl);
 }

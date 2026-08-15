@@ -1,4 +1,3 @@
-import { randomUUID } from "crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 // Ensure a row exists in the User table for the current Supabase authenticated user.
@@ -25,6 +24,6 @@ export async function ensureUserRowFromSupabase(supabase: SupabaseClient) {
     return existingByEmail;
   }
 
-  const { data: created } = await supabase.from("User").insert({ id: randomUUID(), externalId, email, name: name ?? "" }).select("id").single().catch(() => ({ data: null }));
+  const { data: created } = await supabase.from("User").insert({ externalId, email, name: name ?? "" }).select("id").single().catch(() => ({ data: null }));
   return created;
 }

@@ -1,12 +1,11 @@
-import { AssetImage } from "@/components/asset-image";
-import { Chat } from "@/components/chat";
-import { DownloadOriginalLink } from "@/components/download-original-link";
-import { PayButton } from "@/app/p/[projectId]/pay-button";
 import { authOptions } from "@/lib/auth";
-import { createProtectedDownloadLink, getPreviewAssetUrl } from "@/lib/storage";
 import { supabase } from "@/lib/supabase";
-import { getServerSession } from "next-auth";
+import { createProtectedDownloadLink, getPreviewAssetUrl } from "@/lib/storage";
+import { PayButton } from "@/app/p/[projectId]/pay-button";
+import { Chat } from "@/components/chat"; // ייבוא תקין עם סוגריים מסולסלים
+import Image from "next/image";
 import Link from "next/link";
+import { getServerSession } from "next-auth";
 import { notFound } from "next/navigation";
 
 type Props = {
@@ -27,7 +26,7 @@ export default async function ClientPreviewPage({ params }: Props) {
     // שולף את נתוני הפרויקט, כולל נתוני הפרילנסר ונתוני הלקוח כדי שנוכל להציג את השם בצ'אט
     const { data: projectData, error } = await supabase
         .from("DeliveryProject")
-        .select("id, title, description, price, currency, paymentStatus, freelancerId, freelancer:User!freelancerId(name), client:User!clientId(name), asset:Asset(id, previewUrl, isUnlocked)")
+        .select("*, freelancer:User!freelancerId(*), client:User!clientId(*), asset:Asset(*)")
         .eq("id", projectId)
         .single();
 
@@ -70,24 +69,14 @@ export default async function ClientPreviewPage({ params }: Props) {
                 <section className="rounded-xl border bg-white p-6 shadow-sm">
                     <h2 className="text-xl font-semibold">Asset Preview</h2>
                     <div className="relative mt-4 aspect-video overflow-hidden rounded-lg border bg-slate-100">
-                        <AssetImage
-                            src={previewUrl}
-                            alt={`${projectData.title} preview`}
-                            sizes="(max-width: 896px) 100vw, 896px"
-                            preload
-                        />
+                        <Image src={previewUrl} alt={`${projectData.title} preview`} fill className="object-cover" unoptimized />
                     </div>
                 </section>
             ) : (
                 <section className="rounded-xl border bg-white p-6 shadow-sm">
                     <h2 className="text-xl font-semibold">Asset Preview</h2>
                     <div className="relative mt-4 aspect-video overflow-hidden rounded-lg border bg-slate-100">
-                        <AssetImage
-                            src={previewUrl}
-                            alt={`${projectData.title} preview`}
-                            sizes="(max-width: 896px) 100vw, 896px"
-                            preload
-                        />
+                        <Image src={previewUrl} alt={`${projectData.title} preview`} fill className="object-cover" unoptimized />
                     </div>
                     <p className="mt-4 text-sm text-slate-600 italic">This is a watermarked preview. Purchase to download the full version.</p>
                 </section>
@@ -97,14 +86,14 @@ export default async function ClientPreviewPage({ params }: Props) {
                 {isVaultOwner ? (
                     <div className="space-y-3">
                         <p className="text-sm text-slate-600">This is your vault. Download your original asset:</p>
-                        <DownloadOriginalLink href={protectedDownloadUrl} className="inline-block rounded-md bg-slate-900 px-4 py-2 text-white hover:bg-slate-800">
+                        <Link href={protectedDownloadUrl} className="inline-block rounded-md bg-slate-900 px-4 py-2 text-white hover:bg-slate-800">
                             Download Original Asset
-                        </DownloadOriginalLink>
+                        </Link>
                     </div>
                 ) : projectData.paymentStatus === "COMPLETED" && assetData.isUnlocked ? (
-                    <DownloadOriginalLink href={protectedDownloadUrl} className="inline-block rounded-md bg-slate-900 px-4 py-2 text-white hover:bg-slate-800">
+                    <Link href={protectedDownloadUrl} className="inline-block rounded-md bg-slate-900 px-4 py-2 text-white hover:bg-slate-800">
                         Download Original Asset
-                    </DownloadOriginalLink>
+                    </Link>
                 ) : (
                     <PayButton projectId={projectData.id} />
                 )}
