@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { signOut, useSession } from "next-auth/react";
 
 export function SiteHeader() {
@@ -10,7 +11,7 @@ export function SiteHeader() {
     <header className="w-full border-b bg-white sticky top-0 z-50 h-16">
       <div className="absolute left-0 top-0 flex items-center h-16 pl-4">
         <Link href="/" className="flex items-center gap-3">
-          <img src="/logo.png?v=5" alt="ClientVault logo" className="w-10 h-10 object-contain" />
+          <Image src="/logo.webp" alt="ClientVault logo" width={40} height={40} className="object-contain" quality={75} />
           <span className="text-lg font-bold">ClientVault</span>
         </Link>
       </div>

@@ -29,6 +29,13 @@ async function main() {
       paymentStatus: PaymentStatus.PENDING,
       freelancerId: freelancer.id,
       clientId: client.id,
+      asset: {
+        update: {
+          previewUrl: "/stock/landing-page/preview.webp",
+          originalFileUrl: "/stock/landing-page/original.zip",
+          isUnlocked: false,
+        },
+      },
     },
     create: {
       id: "demo-locked-project",
@@ -41,8 +48,8 @@ async function main() {
       clientId: client.id,
       asset: {
         create: {
-          previewUrl: "https://placehold.co/1200x700?text=Watermarked+Preview",
-          originalFileUrl: "https://example.com/files/landing-page-source.zip",
+          previewUrl: "/stock/landing-page/preview.webp",
+          originalFileUrl: "/stock/landing-page/original.zip",
           isUnlocked: false,
         },
       },
@@ -55,6 +62,13 @@ async function main() {
       paymentStatus: PaymentStatus.COMPLETED,
       freelancerId: freelancer.id,
       clientId: client.id,
+      asset: {
+        update: {
+          previewUrl: "/stock/brand-kit/preview.webp",
+          originalFileUrl: "/stock/brand-kit/original.zip",
+          isUnlocked: true,
+        },
+      },
     },
     create: {
       id: "demo-unlocked-project",
@@ -67,8 +81,8 @@ async function main() {
       clientId: client.id,
       asset: {
         create: {
-          previewUrl: "https://placehold.co/1200x700?text=Brand+Kit+Preview",
-          originalFileUrl: "https://example.com/files/brand-kit.zip",
+          previewUrl: "/stock/brand-kit/preview.webp",
+          originalFileUrl: "/stock/brand-kit/original.zip",
           isUnlocked: true,
         },
       },

@@ -1,11 +1,12 @@
-import { createProject } from "@/app/actions";
+import { CreateVaultForm } from "@/components/create-vault-form";
+import { AssetImage } from "@/components/asset-image";
+import { DownloadOriginalLink } from "@/components/download-original-link";
 import { authOptions } from "@/lib/auth";
+import { ensureDemoWorkspace } from "@/lib/demo-data";
 import { createProtectedDownloadLink, getPreviewAssetUrl } from "@/lib/storage";
 import { supabase } from "@/lib/supabase";
 import { getServerSession } from "next-auth";
-import Image from "next/image";
 import Link from "next/link";
-import { redirect } from "next/navigation";
 
 export default async function HomePage() {
   const session = await getServerSession(authOptions);
@@ -30,6 +31,10 @@ export default async function HomePage() {
     );
   }
 
+  if (session.user.email?.endsWith("@clientvault.dev")) {
+    await ensureDemoWorkspace();
+  }
+
   // Fetch all data for authenticated users using Supabase
   const [
     { data: clients },
@@ -43,13 +48,13 @@ export default async function HomePage() {
         .order("email", { ascending: true }),
     supabase
         .from("DeliveryProject")
-        .select("*, freelancer:User!freelancerId(*), asset:Asset(*)")
+        .select("id, title, description, price, currency, paymentStatus, freelancer:User!freelancerId(name, email), asset:Asset(id, previewUrl, isUnlocked)")
         .eq("clientId", session.user.id)
         .neq("freelancerId", session.user.id)
         .order("title", { ascending: true }),
     supabase
         .from("DeliveryProject")
-        .select("*, client:User!clientId(*), asset:Asset(*)")
+        .select("id, title, description, price, currency, paymentStatus, client:User!clientId(name, email)")
         .eq("freelancerId", session.user.id)
         .order("title", { ascending: true }),
   ]);
@@ -70,57 +75,8 @@ export default async function HomePage() {
         {/* Create New Vault Section (Freelancer) */}
         <section className="rounded-xl border bg-white p-6 shadow-sm">
           <h2 className="text-2xl font-semibold mb-4">Create New Vault</h2>
-          <p className="text-sm text-slate-600 mb-4">Create a secure delivery vault to share with clients.</p>
-          <form action={createProject} className="grid gap-4 md:grid-cols-2">
-            <label className="flex flex-col gap-2 text-sm">
-              Client
-              {safeClients.length > 0 ? (
-                  <select name="clientId" required className="rounded-md border p-2">
-                    <option value="">Select a client...</option>
-                    {safeClients.map((client: any) => (
-                        <option key={client.id} value={client.id}>
-                          {client.name} ({client.email})
-                        </option>
-                    ))}
-                  </select>
-              ) : (
-                  <p className="rounded-md border bg-slate-50 p-2 text-xs text-slate-600">
-                    No other users found yet.
-                  </p>
-              )}
-            </label>
-            <label className="flex flex-col gap-2 text-sm">
-              Price (USD)
-              <input name="price" type="number" min="1" step="0.01" required className="rounded-md border p-2" />
-            </label>
-            <label className="flex flex-col gap-2 text-sm md:col-span-2">
-              Title
-              <input name="title" required className="rounded-md border p-2" placeholder="Vault title" />
-            </label>
-            <label className="flex flex-col gap-2 text-sm md:col-span-2">
-              Description
-              <textarea name="description" required className="rounded-md border p-2" rows={3} placeholder="Describe your vault" />
-            </label>
-            <label className="flex flex-col gap-2 text-sm">
-              Currency
-              <input name="currency" defaultValue="USD" required className="rounded-md border p-2" />
-            </label>
-            <label className="flex flex-col gap-2 text-sm">
-              Preview URL (watermarked)
-              <input name="previewUrl" type="url" required className="rounded-md border p-2" />
-            </label>
-            <label className="flex flex-col gap-2 text-sm md:col-span-2">
-              Original File URL (protected)
-              <input name="originalFileUrl" type="url" required className="rounded-md border p-2" />
-            </label>
-            <button
-                type="submit"
-                disabled={safeClients.length === 0}
-                className="rounded-md bg-slate-900 px-4 py-2 text-white disabled:cursor-not-allowed disabled:opacity-60 md:col-span-2 font-medium"
-            >
-              Create Vault
-            </button>
-          </form>
+          <p className="text-sm text-slate-600 mb-4">Create a secure delivery vault to share with clients. Start with a stock demo pack.</p>
+          <CreateVaultForm clients={safeClients} />
         </section>
 
         {/* Your Vaults Section (Freelancer Created) */}
@@ -186,7 +142,11 @@ export default async function HomePage() {
 
                         {previewUrl ? (
                             <div className="relative aspect-video overflow-hidden rounded-lg border bg-slate-100 mb-3">
-                              <Image src={previewUrl} alt={`${project.title} preview`} fill className="object-cover" unoptimized />
+                              <AssetImage
+                                src={previewUrl}
+                                alt={`${project.title} preview`}
+                                sizes="(max-width: 768px) 100vw, 640px"
+                              />
                             </div>
                         ) : null}
 
@@ -195,9 +155,9 @@ export default async function HomePage() {
                             View Preview
                           </Link>
                           {project.paymentStatus === "COMPLETED" && assetData?.isUnlocked && protectedDownloadUrl ? (
-                              <Link href={protectedDownloadUrl} className="px-3 py-2 rounded-md bg-green-600 text-white text-sm font-medium hover:bg-green-700">
+                              <DownloadOriginalLink href={protectedDownloadUrl} className="px-3 py-2 rounded-md bg-green-600 text-white text-sm font-medium hover:bg-green-700">
                                 Download Original
-                              </Link>
+                              </DownloadOriginalLink>
                           ) : null}
                         </div>
                       </li>
