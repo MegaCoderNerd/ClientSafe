@@ -1,10 +1,14 @@
 import { createBrowserClient } from "@supabase/ssr";
+import { getSupabaseAnonKey, getSupabaseUrl } from "@/lib/supabase-env";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+let browserClient: ReturnType<typeof createBrowserClient> | undefined;
 
-export const createClient = () =>
-  createBrowserClient(
-    supabaseUrl!,
-    supabaseKey!,
-  );
+export const createClient = () => {
+  if (browserClient) return browserClient;
+
+  const client = createBrowserClient(getSupabaseUrl(), getSupabaseAnonKey());
+  if (typeof window !== "undefined") {
+    browserClient = client;
+  }
+  return client;
+};

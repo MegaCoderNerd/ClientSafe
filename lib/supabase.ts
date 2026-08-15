@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { supabaseFetch } from "@/lib/supabase-fetch";
 
 function normalizeSupabaseUrl(url: string) {
     // createClient already appends /rest/v1; a project URL that includes it
@@ -15,4 +16,6 @@ if (!supabaseUrl || !supabaseKey) {
     throw new Error('Missing Supabase environment variables');
 }
 
-export const supabase = createClient(supabaseUrl, supabaseKey);
+export const supabase = createClient(supabaseUrl, supabaseKey, {
+    global: { fetch: supabaseFetch },
+});

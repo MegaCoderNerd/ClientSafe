@@ -1,6 +1,8 @@
 import type { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { ensureDemoWorkspace } from "@/lib/demo-data";
+import { ensureAppUserFromAuth } from "@/lib/ensure-app-user";
+import { supabaseAnon } from "@/lib/supabase-anon";
 import { supabase } from "@/lib/supabase";
 
 const DEMO_ACCOUNTS: Record<string, { id: string; name: string; password: string }> = {
@@ -91,20 +93,31 @@ export const authOptions: NextAuthOptions = {
             return user;
           }
 
-          const { data: user, error } = await supabase
-            .from("User")
-            .select("id, email, name, password")
-            .eq("email", email)
-            .maybeSingle();
+          const { data: authData, error: authError } = await supabaseAnon.auth.signInWithPassword({
+            email,
+            password,
+          });
 
-          if (error) {
-            console.error("[auth] user lookup failed", error);
+          if (authError) {
+            const message = authError.message.toLowerCase();
+            if (message.includes("not confirmed") || message.includes("email not confirmed")) {
+              throw new Error("Please verify your email before signing in.");
+            }
             return null;
           }
 
-          if (!user || user.password !== password) return null;
-          return toAuthUser(user);
+          const confirmed = Boolean(authData.user?.email_confirmed_at || authData.user?.confirmed_at);
+          if (!authData.user || !confirmed) {
+            throw new Error("Please verify your email before signing in.");
+          }
+
+          const appUser = await ensureAppUserFromAuth(authData.user);
+          if (!appUser) return null;
+          return toAuthUser(appUser);
         } catch (error) {
+          if (error instanceof Error && error.message.toLowerCase().includes("verify your email")) {
+            throw error;
+          }
           console.error("[auth] error", error);
           if (demo) return { id: demo.id, email, name: demo.name };
           return null;

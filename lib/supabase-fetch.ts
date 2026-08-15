@@ -1,0 +1,3 @@
+export function supabaseFetch(input: RequestInfo | URL, init?: RequestInit) {
+  return fetch(input, { ...init, cache: "no-store" });
+}

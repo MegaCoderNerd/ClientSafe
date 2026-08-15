@@ -1,4 +1,5 @@
 import { getStripeClient } from "@/lib/stripe";
+import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { supabase } from "@/lib/supabase";
@@ -29,6 +30,8 @@ export async function POST(request: Request) {
       // Mark project as paid and unlock asset
       await supabase.from("DeliveryProject").update({ paymentStatus: "COMPLETED" }).eq("id", projectId);
       await supabase.from("Asset").update({ isUnlocked: true }).eq("projectId", projectId);
+      revalidatePath("/");
+      revalidatePath(`/p/${projectId}`);
     }
   }
 

@@ -1,12 +1,15 @@
 import { CreateVaultForm } from "@/components/create-vault-form";
 import { AssetImage } from "@/components/asset-image";
 import { DownloadOriginalLink } from "@/components/download-original-link";
+import { SupabaseLiveRefresh } from "@/components/supabase-live-refresh";
 import { authOptions } from "@/lib/auth";
 import { ensureDemoWorkspace } from "@/lib/demo-data";
 import { createProtectedDownloadLink, getPreviewAssetUrl } from "@/lib/storage";
 import { supabase } from "@/lib/supabase";
 import { getServerSession } from "next-auth";
 import Link from "next/link";
+
+export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
   const session = await getServerSession(authOptions);
@@ -66,6 +69,7 @@ export default async function HomePage() {
 
   return (
       <main className="mx-auto flex max-w-5xl flex-col gap-8 p-8">
+        <SupabaseLiveRefresh tables={[{ table: "DeliveryProject" }, { table: "Asset" }, { table: "User" }]} />
         {/* Welcome Section */}
         <section className="rounded-xl border bg-white p-6 shadow-sm">
           <h1 className="text-3xl font-bold">Welcome, {session.user.name ?? session.user.email}</h1>

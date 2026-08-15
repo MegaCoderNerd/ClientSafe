@@ -1,5 +1,8 @@
 "use client";
 
+import { formatLocalDayLabel, formatLocalTime, localDayKey } from "@/lib/chat-time";
+import { useUserTimeZone } from "@/components/time-zone-provider";
+import { createClient } from "@/utils/supabase/client";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 type Message = {
@@ -18,17 +21,18 @@ type ChatProps = {
   projectId: string;
   currentUserId: string;
   otherUserName: string;
+  className?: string;
 };
 
-export function Chat({ projectId, currentUserId, otherUserName }: ChatProps) {
+export function Chat({ projectId, currentUserId, otherUserName, className = "" }: ChatProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [isLoadingMessages, setIsLoadingMessages] = useState(true);
+  const timeZone = useUserTimeZone();
 
   // Reference for the scrollable container
   const chatContainerRef = useRef<HTMLDivElement>(null);
-  const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Scroll only the chat container, not the entire page
   const scrollToBottom = useCallback(() => {
@@ -39,7 +43,9 @@ export function Chat({ projectId, currentUserId, otherUserName }: ChatProps) {
 
   const fetchMessages = useCallback(async () => {
     try {
-      const response = await fetch(`/api/chat?projectId=${projectId}`);
+      const response = await fetch(`/api/chat?projectId=${encodeURIComponent(projectId)}`, {
+        cache: "no-store",
+      });
       if (response.ok) {
         const data = await response.json();
         setMessages(data);
@@ -52,18 +58,41 @@ export function Chat({ projectId, currentUserId, otherUserName }: ChatProps) {
   }, [projectId]);
 
   useEffect(() => {
-    fetchMessages();
-    setIsLoadingMessages(false);
+    void fetchMessages();
 
-    // Poll for new messages every 2 seconds
-    pollIntervalRef.current = setInterval(() => {
-      fetchMessages();
-    }, 2000);
+    const supabase = createClient();
+    const channel = supabase
+      .channel(`chat:${projectId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "ChatMessage",
+          filter: `projectId=eq.${projectId}`,
+        },
+        () => {
+          void fetchMessages();
+        },
+      )
+      .subscribe();
+
+    const poll = window.setInterval(() => {
+      void fetchMessages();
+    }, 8000);
+
+    function refresh() {
+      void fetchMessages();
+    }
+
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", refresh);
 
     return () => {
-      if (pollIntervalRef.current) {
-        clearInterval(pollIntervalRef.current);
-      }
+      window.clearInterval(poll);
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", refresh);
+      void supabase.removeChannel(channel);
     };
   }, [projectId, fetchMessages]);
 
@@ -108,8 +137,8 @@ export function Chat({ projectId, currentUserId, otherUserName }: ChatProps) {
   };
 
   return (
-      <div className="flex flex-col gap-4 rounded-xl border bg-white p-6 shadow-sm h-[500px]">
-        <h2 className="text-xl font-semibold">Chat with {otherUserName}</h2>
+      <div className={`flex h-full min-h-[28rem] flex-col gap-4 rounded-xl border bg-white p-4 shadow-sm ${className}`}>
+        <h2 className="text-lg font-semibold">Chat with {otherUserName}</h2>
 
         <div
             ref={chatContainerRef}
@@ -124,25 +153,36 @@ export function Chat({ projectId, currentUserId, otherUserName }: ChatProps) {
                 No messages yet. Start a conversation!
               </div>
           ) : (
-              messages.map((message) => (
-                  <div
-                      key={message.id}
-                      className={`flex ${message.senderId === currentUserId ? "justify-end" : "justify-start"}`}
-                  >
-                    <div
-                        className={`max-w-xs px-4 py-2 rounded-lg ${
-                            message.senderId === currentUserId
-                                ? "bg-blue-500 text-white"
-                                : "bg-slate-200 text-slate-900"
+              messages.map((message, index) => {
+                const previous = messages[index - 1];
+                const showDate =
+                  !previous || localDayKey(previous.createdAt, timeZone) !== localDayKey(message.createdAt, timeZone);
+                const isOwn = message.senderId === currentUserId;
+
+                return (
+                  <div key={message.id} className="space-y-2">
+                    {showDate ? (
+                      <div className="flex justify-center py-1">
+                        <span className="rounded-full border bg-white px-2 py-0.5 text-[11px] text-slate-500">
+                          {formatLocalDayLabel(message.createdAt, timeZone)}
+                        </span>
+                      </div>
+                    ) : null}
+                    <div className={`flex ${isOwn ? "justify-end" : "justify-start"}`}>
+                      <div
+                        className={`max-w-[85%] px-4 py-2 rounded-lg ${
+                          isOwn ? "bg-blue-500 text-white" : "bg-slate-200 text-slate-900"
                         }`}
-                    >
-                      <p className="text-sm">{message.content}</p>
-                      <p className="text-xs mt-1 opacity-75">
-                        {new Date(message.createdAt).toLocaleTimeString()}
-                      </p>
+                      >
+                        <p className="text-sm">{message.content}</p>
+                        <p className={`mt-1 text-[10px] leading-none opacity-70 ${isOwn ? "text-right" : "text-left"}`}>
+                          {formatLocalTime(message.createdAt, timeZone)}
+                        </p>
+                      </div>
                     </div>
                   </div>
-              ))
+                );
+              })
           )}
         </div>
 
