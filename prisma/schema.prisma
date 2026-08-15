@@ -24,18 +24,23 @@ model User {
 }
 
 model DeliveryProject {
-  id            String        @id @default(cuid())
-  title         String
-  description   String
-  price         Int
-  currency      String
-  paymentStatus PaymentStatus @default(PENDING)
-  freelancerId  String
-  clientId      String
-  freelancer    User          @relation("FreelancerProjects", fields: [freelancerId], references: [id])
-  client        User          @relation("ClientProjects", fields: [clientId], references: [id])
-  asset         Asset?
-  chatMessages  ChatMessage[]
+  id                     String        @id @default(cuid())
+  title                  String
+  description            String
+  price                  Int
+  currency               String
+  paymentStatus          PaymentStatus @default(PENDING)
+  paypalOrderId          String?
+  paypalCaptureId        String?       @unique
+  platformFeePercent     Int           @default(10)
+  platformFeeAmount      Int?
+  freelancerPayoutAmount Int?
+  freelancerId           String
+  clientId               String
+  freelancer             User          @relation("FreelancerProjects", fields: [freelancerId], references: [id])
+  client                 User          @relation("ClientProjects", fields: [clientId], references: [id])
+  asset                  Asset?
+  chatMessages           ChatMessage[]
 }
 
 model Asset {

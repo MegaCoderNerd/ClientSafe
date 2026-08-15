@@ -40,7 +40,9 @@ export async function GET(request: Request, context: RouteContext) {
     return NextResponse.json({ error: "Unauthorized - payment required" }, { status: 403 });
   }
 
-  if (!asset.isUnlocked && !isVaultOwner) {
+  if (isPaid && !asset.isUnlocked) {
+    await supabase.from("Asset").update({ isUnlocked: true }).eq("id", asset.id);
+  } else if (!asset.isUnlocked && !isVaultOwner) {
     return NextResponse.json({ error: "Asset not available" }, { status: 404 });
   }
 

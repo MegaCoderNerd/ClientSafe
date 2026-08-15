@@ -47,10 +47,14 @@ export async function ensureAppUserFromAuth(authUser: AuthUser) {
     .select("id, email, name")
     .single();
 
-  if (error) {
-    console.error("[auth] failed to create app user", error);
-    return null;
+  if (!error && created) return created;
+
+  const { data: raced } = await supabase.from("User").select("id, email, name").eq("email", email).maybeSingle();
+  if (raced) {
+    await supabase.from("User").update({ externalId: authUser.id, name }).eq("id", raced.id);
+    return { ...raced, name };
   }
 
-  return created;
+  console.error("[auth] failed to create app user", error);
+  return null;
 }

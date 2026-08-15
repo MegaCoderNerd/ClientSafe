@@ -1,6 +1,7 @@
 "use client";
 
 import { ResendConfirmationButton } from "@/components/resend-confirmation-button";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -13,12 +14,14 @@ export default function SignUpPage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [canResend, setCanResend] = useState(false);
+  const [canResetPassword, setCanResetPassword] = useState(false);
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
     setSuccess(null);
     setCanResend(false);
+    setCanResetPassword(false);
     setLoading(true);
 
     try {
@@ -33,12 +36,14 @@ export default function SignUpPage() {
         message?: string;
         needsVerification?: boolean;
         canResend?: boolean;
+        canResetPassword?: boolean;
       };
       setLoading(false);
 
       if (!res.ok) {
         setError(data.error || "Signup failed");
         setCanResend(Boolean(data.canResend));
+        setCanResetPassword(Boolean(data.canResetPassword));
         return;
       }
 
@@ -118,7 +123,14 @@ export default function SignUpPage() {
               {loading ? "Creating account..." : "Sign Up"}
             </button>
 
-            <div className="flex items-start justify-end">
+            <div className="flex items-start justify-between gap-4">
+              {canResetPassword ? (
+                <Link href="/auth/forgot-password" className="text-sm text-blue-600 hover:underline">
+                  Reset password
+                </Link>
+              ) : (
+                <span />
+              )}
               {canResend ? <ResendConfirmationButton email={email} /> : null}
             </div>
 

@@ -1,7 +1,9 @@
+import { timingSafeEqual } from "crypto";
 import type { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { ensureDemoWorkspace } from "@/lib/demo-data";
 import { ensureAppUserFromAuth } from "@/lib/ensure-app-user";
+import { findAuthUserByEmail } from "@/lib/supabase-auth-admin";
 import { supabaseAnon } from "@/lib/supabase-anon";
 import { supabase } from "@/lib/supabase";
 
@@ -31,6 +33,49 @@ function getDemoAccount(email: string, password: string) {
 
 function toAuthUser(user: { id: string; email: string; name: string }) {
   return { id: user.id, email: user.email, name: user.name };
+}
+
+function passwordsMatch(stored: string, provided: string) {
+  const storedBuffer = Buffer.from(stored);
+  const providedBuffer = Buffer.from(provided);
+  if (storedBuffer.length !== providedBuffer.length) return false;
+  return timingSafeEqual(storedBuffer, providedBuffer);
+}
+
+async function migrateLegacyPasswordUser(email: string, password: string) {
+  const { data: appUser } = await supabase
+    .from("User")
+    .select("id, email, name, password")
+    .eq("email", email)
+    .maybeSingle();
+
+  if (!appUser?.password || !passwordsMatch(appUser.password, password)) {
+    return null;
+  }
+
+  const existingAuth = await findAuthUserByEmail(email);
+  if (existingAuth) return null;
+
+  const { data: created, error: createError } = await supabase.auth.admin.createUser({
+    email,
+    password,
+    email_confirm: true,
+    user_metadata: { name: appUser.name },
+  });
+
+  if (createError || !created.user) {
+    if (createError && !createError.message.toLowerCase().includes("already")) {
+      console.error("[auth] legacy user migrate failed", createError);
+    }
+    return null;
+  }
+
+  await supabase
+    .from("User")
+    .update({ externalId: created.user.id, password: null })
+    .eq("id", appUser.id);
+
+  return toAuthUser(appUser);
 }
 
 async function ensureDemoUser(email: string, demo: { id: string; name: string; password: string }) {
@@ -101,21 +146,24 @@ export const authOptions: NextAuthOptions = {
           if (authError) {
             const message = authError.message.toLowerCase();
             if (message.includes("not confirmed") || message.includes("email not confirmed")) {
-              throw new Error("Please verify your email before signing in.");
+              throw new Error("EMAIL_NOT_CONFIRMED");
             }
+
+            const migrated = await migrateLegacyPasswordUser(email, password);
+            if (migrated) return migrated;
             return null;
           }
 
           const confirmed = Boolean(authData.user?.email_confirmed_at || authData.user?.confirmed_at);
           if (!authData.user || !confirmed) {
-            throw new Error("Please verify your email before signing in.");
+            throw new Error("EMAIL_NOT_CONFIRMED");
           }
 
           const appUser = await ensureAppUserFromAuth(authData.user);
           if (!appUser) return null;
           return toAuthUser(appUser);
         } catch (error) {
-          if (error instanceof Error && error.message.toLowerCase().includes("verify your email")) {
+          if (error instanceof Error && error.message === "EMAIL_NOT_CONFIRMED") {
             throw error;
           }
           console.error("[auth] error", error);

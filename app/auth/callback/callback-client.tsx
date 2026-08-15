@@ -13,10 +13,29 @@ export function AuthCallbackClient({ next }: { next?: string }) {
     let cancelled = false;
 
     async function finish(path: string) {
+      const isVerifiedSignIn = path.includes("verified=1") || path.startsWith("/auth/signin");
       const { data } = await supabase.auth.getUser();
-      if (data.user) {
-        await fetch("/api/auth/sync-user", { method: "POST" });
+
+      if (cancelled) return;
+
+      if (!data.user) {
+        if (isVerifiedSignIn) {
+          setError("Email confirmation succeeded, but no signed-in user was found. Try signing in.");
+          return;
+        }
+        router.replace(path);
+        return;
       }
+
+      const response = await fetch("/api/auth/sync-user", { method: "POST" });
+      if (cancelled) return;
+      if (!response.ok && isVerifiedSignIn) {
+        setError(
+          "Email confirmed, but we could not finish creating your account. Try signing in again, or use password reset if sign-in fails.",
+        );
+        return;
+      }
+
       router.replace(path);
     }
 

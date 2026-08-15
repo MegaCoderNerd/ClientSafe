@@ -158,7 +158,7 @@ export default async function HomePage() {
                           <Link href={`/p/${project.id}`} className="px-3 py-2 rounded-md bg-blue-600 text-white text-sm font-medium hover:bg-blue-700">
                             View Preview
                           </Link>
-                          {project.paymentStatus === "COMPLETED" && assetData?.isUnlocked && protectedDownloadUrl ? (
+                          {project.paymentStatus === "COMPLETED" && protectedDownloadUrl ? (
                               <DownloadOriginalLink href={protectedDownloadUrl} className="px-3 py-2 rounded-md bg-green-600 text-white text-sm font-medium hover:bg-green-700">
                                 Download Original
                               </DownloadOriginalLink>

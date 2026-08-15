@@ -4,6 +4,7 @@ import { randomUUID } from "crypto";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
+import { getPlatformFeePercent, splitVaultPrice } from "@/lib/paypal";
 import { supabase } from "@/lib/supabase";
 
 type ActionResult = { ok: true; projectId: string } | { ok: false; error: string };
@@ -83,6 +84,8 @@ export async function createProject(formData: FormData): Promise<ActionResult> {
 
   // Prisma @default(cuid()) is client-side only; Postgres has no id default.
   const projectId = randomUUID();
+  const price = Math.round(priceInDollars * 100);
+  const fees = splitVaultPrice(price, getPlatformFeePercent());
   const { data: project, error: projectError } = await supabase
     .from("DeliveryProject")
     .insert({
@@ -90,10 +93,13 @@ export async function createProject(formData: FormData): Promise<ActionResult> {
       title,
       description,
       currency,
-      price: Math.round(priceInDollars * 100),
+      price,
       paymentStatus: "PENDING",
       freelancerId,
       clientId,
+      platformFeePercent: fees.platformFeePercent,
+      platformFeeAmount: fees.platformFeeAmount,
+      freelancerPayoutAmount: fees.freelancerPayoutAmount,
     })
     .select("id")
     .single();

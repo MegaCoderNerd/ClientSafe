@@ -38,20 +38,6 @@ export function SignInForm({
         : null,
   );
 
-  async function checkNeedsVerification(targetEmail: string, targetPass: string) {
-    try {
-      const response = await fetch("/api/auth/needs-verification", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: targetEmail, password: targetPass }),
-      });
-      const data = (await response.json()) as { needsVerification?: boolean };
-      return Boolean(data.needsVerification);
-    } catch {
-      return false;
-    }
-  }
-
   async function handleLogin(targetEmail: string, targetPass: string) {
     setLoading(true);
     setError(null);
@@ -70,9 +56,7 @@ export function SignInForm({
       return;
     }
 
-    const unverified =
-      (res.error !== "CredentialsSignin" && isUnverifiedError(res.error)) ||
-      (await checkNeedsVerification(targetEmail, targetPass));
+    const unverified = isUnverifiedError(res.error ?? "");
 
     setNeedsVerification(unverified);
     setError(unverified ? "Please verify your email before signing in." : "Invalid email or password. Please try again.");

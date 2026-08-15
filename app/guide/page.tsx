@@ -33,8 +33,9 @@ export default function GuidePage() {
             <div>
               <h3 className="text-lg font-semibold mb-2">3. Track Payments</h3>
               <p className="text-slate-600">
-                Monitor the status of each vault. When a client completes payment, the status changes to "COMPLETED" 
-                and they can download the original file.
+                Monitor the status of each vault. When a client completes PayPal payment, the status changes to &quot;COMPLETED&quot;
+                and they can download the original file. You receive 90% of the listed price; ClientVault ledgers a 10% platform fee
+                (PayPal&apos;s processing fee comes out of the platform share).
               </p>
             </div>
           </div>
@@ -64,8 +65,9 @@ export default function GuidePage() {
             <div>
               <h3 className="text-lg font-semibold mb-2">3. Complete Payment</h3>
               <p className="text-slate-600">
-                Once you're satisfied with the preview, proceed to checkout and complete the payment through 
-                our secure payment processor.
+                Once you&apos;re satisfied with the preview, pay the listed vault price on PayPal&apos;s hosted checkout.
+                Card details stay with PayPal. ClientVault takes a 10% platform fee and the freelancer receives 90%.
+                The vault unlocks only after PayPal confirms the capture.
               </p>
             </div>
 
@@ -94,8 +96,8 @@ export default function GuidePage() {
             <li className="flex gap-3">
               <span className="text-lg">💳</span>
               <div>
-                <p className="font-semibold">Integrated Payments</p>
-                <p className="text-sm text-slate-600">Handle all transactions securely with automatic payment processing</p>
+                <p className="font-semibold">PayPal Checkout</p>
+                <p className="text-sm text-slate-600">Clients pay on PayPal. A 10% platform fee is recorded, and the original file unlocks only after a verified capture.</p>
               </div>
             </li>
             <li className="flex gap-3">
@@ -137,8 +139,15 @@ export default function GuidePage() {
             <div>
               <p className="font-semibold mb-2">Is my payment information secure?</p>
               <p className="text-slate-600 text-sm">
-                Yes! We use industry-standard security and partner with trusted payment processors 
-                to keep your financial information safe.
+                Yes. Checkout happens on PayPal&apos;s hosted page, so card numbers never touch ClientVault servers.
+                We only unlock a vault after PayPal verifies the payment capture.
+              </p>
+            </div>
+            <div>
+              <p className="font-semibold mb-2">How is the 10% platform fee handled?</p>
+              <p className="text-slate-600 text-sm">
+                The client pays the listed vault price in full. ClientVault records 10% as the platform fee and 90% as the freelancer payout.
+                Paying the freelancer out of that 90% is done from the dashboard later; it is not split automatically at checkout.
               </p>
             </div>
           </div>

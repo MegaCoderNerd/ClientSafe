@@ -3,7 +3,9 @@ import { Chat } from "@/components/chat";
 import { DownloadOriginalLink } from "@/components/download-original-link";
 import { SupabaseLiveRefresh } from "@/components/supabase-live-refresh";
 import { PayButton } from "@/app/p/[projectId]/pay-button";
+import { PayPalReturnHandler } from "@/app/p/[projectId]/paypal-return-handler";
 import { authOptions } from "@/lib/auth";
+import { feesForStoredVault } from "@/lib/paypal";
 import { createProtectedDownloadLink, getPreviewAssetUrl } from "@/lib/storage";
 import { supabase } from "@/lib/supabase";
 import { getServerSession } from "next-auth";
@@ -16,10 +18,15 @@ type Props = {
     params: Promise<{
         projectId: string;
     }>;
+    searchParams: Promise<{
+        token?: string;
+        canceled?: string;
+    }>;
 };
 
-export default async function ClientPreviewPage({ params }: Props) {
+export default async function ClientPreviewPage({ params, searchParams }: Props) {
     const { projectId } = await params;
+    const query = await searchParams;
     const session = await getServerSession(authOptions);
     const currentUserId = session?.user?.id;
 
@@ -30,7 +37,7 @@ export default async function ClientPreviewPage({ params }: Props) {
     // שולף את נתוני הפרויקט, כולל נתוני הפרילנסר ונתוני הלקוח כדי שנוכל להציג את השם בצ'אט
     const { data: projectData, error } = await supabase
         .from("DeliveryProject")
-        .select("id, title, description, price, currency, paymentStatus, freelancerId, freelancer:User!freelancerId(name), client:User!clientId(name), asset:Asset(id, previewUrl, isUnlocked)")
+        .select("id, title, description, price, currency, paymentStatus, freelancerId, platformFeePercent, platformFeeAmount, freelancerPayoutAmount, freelancer:User!freelancerId(name), client:User!clientId(name), asset:Asset(id, previewUrl, isUnlocked)")
         .eq("id", projectId)
         .single();
 
@@ -51,6 +58,11 @@ export default async function ClientPreviewPage({ params }: Props) {
     const protectedDownloadUrl = createProtectedDownloadLink(assetData.id);
 
     const isVaultOwner = currentUserId === projectData.freelancerId;
+    const fees = feesForStoredVault(projectData);
+    const platformFeeAmount = fees.platformFeeAmount;
+    const freelancerPayoutAmount = fees.freelancerPayoutAmount;
+    const checkoutCanceled = query.canceled === "true";
+    const paypalToken = checkoutCanceled ? undefined : query.token?.trim();
 
     // הגדרת שם המשתמש השני עבור הצ'אט
     const otherUserName = isVaultOwner ? clientData?.name : freelancerData?.name;
@@ -75,6 +87,13 @@ export default async function ClientPreviewPage({ params }: Props) {
                         <p className="mt-4 text-sm text-slate-600">Freelancer: {freelancerData?.name}</p>
                         <p className="text-sm text-slate-600">Price: {(projectData.price / 100).toFixed(2)} {projectData.currency.toUpperCase()}</p>
                         {isVaultOwner && <p className="text-sm text-slate-600">Payment Status: {projectData.paymentStatus}</p>}
+                        {isVaultOwner && (
+                            <p className="text-sm text-slate-600">
+                                Payout: {(freelancerPayoutAmount / 100).toFixed(2)} {projectData.currency.toUpperCase()}
+                                {" "}({100 - fees.platformFeePercent}%) after a {fees.platformFeePercent}% platform fee
+                                {" "}({(platformFeeAmount / 100).toFixed(2)} {projectData.currency.toUpperCase()}).
+                            </p>
+                        )}
                     </section>
 
                     {isVaultOwner || projectData.paymentStatus === "COMPLETED" ? (
@@ -112,12 +131,28 @@ export default async function ClientPreviewPage({ params }: Props) {
                                     Download Original Asset
                                 </DownloadOriginalLink>
                             </div>
-                        ) : projectData.paymentStatus === "COMPLETED" && assetData.isUnlocked ? (
+                        ) : projectData.paymentStatus === "COMPLETED" ? (
                             <DownloadOriginalLink href={protectedDownloadUrl} className="inline-block rounded-md bg-slate-900 px-4 py-2 text-white hover:bg-slate-800">
                                 Download Original Asset
                             </DownloadOriginalLink>
                         ) : (
-                            <PayButton projectId={projectData.id} />
+                            <div>
+                                {checkoutCanceled ? (
+                                    <p className="mb-3 text-sm text-amber-700">PayPal checkout was canceled. You can try again when you are ready.</p>
+                                ) : null}
+                                {paypalToken ? (
+                                    <PayPalReturnHandler projectId={projectData.id} token={paypalToken} />
+                                ) : (
+                                    <PayButton
+                                        projectId={projectData.id}
+                                        priceCents={projectData.price}
+                                        currency={projectData.currency}
+                                        platformFeePercent={fees.platformFeePercent}
+                                        platformFeeAmount={platformFeeAmount}
+                                        freelancerPayoutAmount={freelancerPayoutAmount}
+                                    />
+                                )}
+                            </div>
                         )}
                     </section>
                 </div>

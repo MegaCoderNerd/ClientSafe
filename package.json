@@ -20,8 +20,7 @@
     "next-auth": "^4.24.11",
     "pg": "^8.23.0",
     "react": "^19.2.8",
-    "react-dom": "^19.2.8",
-    "stripe": "^18.5.0"
+    "react-dom": "^19.2.8"
   },
   "devDependencies": {
     "@types/node": "^20",

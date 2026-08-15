@@ -25,6 +25,17 @@ export default async function AuthCallbackPage({
     redirect(`/auth/signin?error=${encodeURIComponent(params.error_description || params.error)}`);
   }
 
+  const isPasswordRecovery =
+    params.type === "recovery" || Boolean(params.next?.startsWith("/auth/update-password"));
+
+  if (isPasswordRecovery && (params.code || (params.token_hash && params.type))) {
+    const query = new URLSearchParams();
+    if (params.code) query.set("code", params.code);
+    if (params.token_hash) query.set("token_hash", params.token_hash);
+    if (params.type) query.set("type", params.type);
+    redirect(`/auth/update-password?${query.toString()}`);
+  }
+
   if (params.code || (params.token_hash && params.type)) {
     const cookieStore = await cookies();
     const supabase = createClient(cookieStore);
@@ -40,12 +51,17 @@ export default async function AuthCallbackPage({
     }
 
     const { data } = await supabase.auth.getUser();
-    if (data.user) {
-      await ensureAppUserFromAuth(data.user);
+    if (!data.user) {
+      redirect(
+        `/auth/signin?error=${encodeURIComponent("Email confirmation succeeded, but no signed-in user was found. Try signing in.")}`,
+      );
     }
 
-    if (params.type === "recovery" || params.next?.startsWith("/auth/update-password")) {
-      redirect("/auth/update-password");
+    const appUser = await ensureAppUserFromAuth(data.user);
+    if (!appUser) {
+      redirect(
+        `/auth/signin?error=${encodeURIComponent("Email confirmed, but we could not finish creating your account. Try signing in again, or use password reset if sign-in fails.")}`,
+      );
     }
 
     redirect("/auth/signin?verified=1");
