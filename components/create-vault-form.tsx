@@ -110,21 +110,14 @@ export function CreateVaultForm({ clients }: { clients: ClientOption[] }) {
   return (
     <form action={handleSubmit} className="grid gap-4 md:grid-cols-2">
       <label className="flex flex-col gap-2 text-sm">
-        Client
-        {clients.length > 0 ? (
-          <select name="clientId" required className="rounded-md border p-2">
-            <option value="">Select a client...</option>
-            {clients.map((client) => (
-              <option key={client.id} value={client.id}>
-                {client.name} ({client.email})
-              </option>
-            ))}
-          </select>
-        ) : (
-          <p className="rounded-md border bg-slate-50 p-2 text-xs text-slate-600">
-            No other users found yet.
-          </p>
-        )}
+        Client email
+        <input
+          name="clientEmail"
+          type="email"
+          required
+          placeholder="client@example.com"
+          className="rounded-md border p-2"
+        />
       </label>
       <label className="flex flex-col gap-2 text-sm">
         Price (USD)
@@ -252,7 +245,7 @@ export function CreateVaultForm({ clients }: { clients: ClientOption[] }) {
 
       <button
         type="submit"
-        disabled={clients.length === 0 || busy}
+        disabled={busy}
         className="rounded-md bg-slate-900 px-4 py-2 text-white disabled:cursor-not-allowed disabled:opacity-60 md:col-span-2 font-medium"
       >
         {busy

@@ -52,7 +52,7 @@ export async function createProject(formData: FormData): Promise<ActionResult> {
     return { ok: false, error: "Authentication required to create a vault." };
   }
 
-  const clientId = String(formData.get("clientId") ?? "");
+  const clientEmail = String(formData.get("clientEmail") ?? "").trim().toLowerCase();
   const title = String(formData.get("title") ?? "").trim();
   const description = String(formData.get("description") ?? "").trim();
   const currency = String(formData.get("currency") ?? "USD").trim().toUpperCase();
@@ -64,7 +64,7 @@ export async function createProject(formData: FormData): Promise<ActionResult> {
   const priceInDollars = Number(formData.get("price") ?? "0");
 
   if (
-    !clientId ||
+    !clientEmail ||
     !title ||
     !description ||
     !currency ||
@@ -77,7 +77,7 @@ export async function createProject(formData: FormData): Promise<ActionResult> {
   }
 
   const freelancerLookup = resolveUserId(session.user);
-  const clientLookup = supabase.from("User").select("id").eq("id", clientId).maybeSingle();
+  const clientLookup = supabase.from("User").select("id").eq("email", clientEmail).maybeSingle();
   const [{ freelancerId }, { data: client }] = await Promise.all([
     freelancerLookup.then((id) => ({ freelancerId: id })),
     clientLookup,
@@ -87,7 +87,7 @@ export async function createProject(formData: FormData): Promise<ActionResult> {
     return { ok: false, error: "Your account was not found. Sign out and sign in again." };
   }
 
-  if (clientId === freelancerId) {
+  if (client?.id === freelancerId) {
     return { ok: false, error: "Choose a client other than yourself." };
   }
 
@@ -99,7 +99,7 @@ export async function createProject(formData: FormData): Promise<ActionResult> {
   }
 
   if (!client?.id) {
-    return { ok: false, error: "Selected client was not found." };
+    return { ok: false, error: "Client with this email was not found." };
   }
 
   // Prisma @default(cuid()) is client-side only; Postgres has no id default.
@@ -116,7 +116,7 @@ export async function createProject(formData: FormData): Promise<ActionResult> {
       price,
       paymentStatus: "PENDING",
       freelancerId,
-      clientId,
+      clientId: client.id,
       platformFeePercent: fees.platformFeePercent,
       platformFeeAmount: fees.platformFeeAmount,
       freelancerPayoutAmount: fees.freelancerPayoutAmount,
@@ -190,7 +190,7 @@ export async function updateProject(formData: FormData): Promise<ActionResult> {
   }
 
   const projectId = String(formData.get("projectId") ?? "").trim();
-  const clientId = String(formData.get("clientId") ?? "").trim();
+  const clientEmail = String(formData.get("clientEmail") ?? "").trim().toLowerCase();
   const title = String(formData.get("title") ?? "").trim();
   const description = String(formData.get("description") ?? "").trim();
   const currency = String(formData.get("currency") ?? "USD").trim().toUpperCase();
@@ -203,7 +203,7 @@ export async function updateProject(formData: FormData): Promise<ActionResult> {
 
   if (
     !projectId ||
-    !clientId ||
+    !clientEmail ||
     !title ||
     !description ||
     !currency ||
@@ -218,13 +218,13 @@ export async function updateProject(formData: FormData): Promise<ActionResult> {
     return { ok: false, error: "Your account was not found. Sign out and sign in again." };
   }
 
-  if (clientId === freelancerId) {
-    return { ok: false, error: "Choose a client other than yourself." };
+  const { data: client } = await supabase.from("User").select("id").eq("email", clientEmail).maybeSingle();
+  if (!client?.id) {
+    return { ok: false, error: "Client with this email was not found." };
   }
 
-  const { data: client } = await supabase.from("User").select("id").eq("id", clientId).maybeSingle();
-  if (!client?.id) {
-    return { ok: false, error: "Selected client was not found." };
+  if (client.id === freelancerId) {
+    return { ok: false, error: "Choose a client other than yourself." };
   }
 
   const { data: project, error: projectError } = await supabase
@@ -266,7 +266,7 @@ export async function updateProject(formData: FormData): Promise<ActionResult> {
 
   const price = Math.round(priceInDollars * 100);
   const fees = splitVaultPrice(price, getPlatformFeePercent());
-  const clientOrPriceChanged = clientId !== project.clientId || price !== project.price;
+  const clientOrPriceChanged = client.id !== project.clientId || price !== project.price;
 
   let resolvedDemoIndex = demoIndexUrl || null;
   if (demoZipUrl) {
@@ -288,7 +288,7 @@ export async function updateProject(formData: FormData): Promise<ActionResult> {
       description,
       currency,
       price,
-      clientId,
+      clientId: client.id,
       platformFeePercent: fees.platformFeePercent,
       platformFeeAmount: fees.platformFeeAmount,
       freelancerPayoutAmount: fees.freelancerPayoutAmount,

@@ -44,6 +44,10 @@ export function EditVaultForm({
   const [phase, setPhase] = useState<UploadPhase>("idle");
   const [uploadPercent, setUploadPercent] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const currentClient = useMemo(
+    () => clients.find((client) => client.id === vault.clientId) ?? null,
+    [clients, vault.clientId],
+  );
   const selected = useMemo(
     () => STOCK_ASSETS.find((asset) => asset.id === selectedId) ?? STOCK_ASSETS[0],
     [selectedId],
@@ -141,21 +145,15 @@ export function EditVaultForm({
   return (
     <form action={handleSubmit} className="grid gap-4 md:grid-cols-2">
       <label className="flex flex-col gap-2 text-sm">
-        Client
-        {clients.length > 0 ? (
-          <select name="clientId" required defaultValue={vault.clientId} className="rounded-md border p-2">
-            <option value="">Select a client...</option>
-            {clients.map((client) => (
-              <option key={client.id} value={client.id}>
-                {client.name} ({client.email})
-              </option>
-            ))}
-          </select>
-        ) : (
-          <p className="rounded-md border bg-slate-50 p-2 text-xs text-slate-600">
-            No other users found yet.
-          </p>
-        )}
+        Client email
+        <input
+          name="clientEmail"
+          type="email"
+          required
+          defaultValue={currentClient?.email ?? ""}
+          placeholder="client@example.com"
+          className="rounded-md border p-2"
+        />
       </label>
       <label className="flex flex-col gap-2 text-sm">
         Price (USD)
@@ -283,7 +281,7 @@ export function EditVaultForm({
 
       <button
         type="submit"
-        disabled={clients.length === 0 || busy}
+        disabled={busy}
         className="rounded-md bg-slate-900 px-4 py-2 text-white disabled:cursor-not-allowed disabled:opacity-60 md:col-span-2 font-medium"
       >
         {busy
