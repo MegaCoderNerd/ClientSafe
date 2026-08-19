@@ -38,6 +38,7 @@ export async function fulfillPaidVault(options: {
         paymentStatus: "COMPLETED",
         paypalOrderId: options.paypalOrderId,
         paypalCaptureId: options.paypalCaptureId,
+        paidAt: new Date().toISOString(),
       })
       .eq("id", project.id)
       .eq("paymentStatus", "PENDING");

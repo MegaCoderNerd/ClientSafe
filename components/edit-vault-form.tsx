@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { createProject } from "@/app/actions";
+import { updateProject } from "@/app/actions";
 import { AssetImage } from "@/components/asset-image";
 import { compressImageFile } from "@/lib/compress-image";
 import { STOCK_ASSETS, type StockAsset } from "@/lib/stock-assets";
@@ -14,13 +14,32 @@ type ClientOption = {
   email: string;
 };
 
-type Source = "stock" | "upload";
+type Source = "keep" | "stock" | "upload";
 type UploadPhase = "idle" | "compress" | "upload" | "save";
 
-export function CreateVaultForm({ clients }: { clients: ClientOption[] }) {
+export type EditableVault = {
+  id: string;
+  title: string;
+  description: string;
+  price: number;
+  currency: string;
+  clientId: string;
+  previewUrl: string;
+  previewVideoUrl: string | null;
+  demoIndexUrl: string | null;
+  originalFileUrl: string;
+};
+
+export function EditVaultForm({
+  clients,
+  vault,
+}: {
+  clients: ClientOption[];
+  vault: EditableVault;
+}) {
   const router = useRouter();
   const [selectedId, setSelectedId] = useState(STOCK_ASSETS[0]?.id ?? "");
-  const [source, setSource] = useState<Source>("stock");
+  const [source, setSource] = useState<Source>("keep");
   const [busy, setBusy] = useState(false);
   const [phase, setPhase] = useState<UploadPhase>("idle");
   const [uploadPercent, setUploadPercent] = useState(0);
@@ -30,8 +49,6 @@ export function CreateVaultForm({ clients }: { clients: ClientOption[] }) {
     [selectedId],
   );
 
-  if (!selected) return null;
-
   async function handleSubmit(formData: FormData) {
     setBusy(true);
     setError(null);
@@ -40,7 +57,21 @@ export function CreateVaultForm({ clients }: { clients: ClientOption[] }) {
     await paintFrame();
 
     try {
-      if (source === "upload") {
+      formData.set("projectId", vault.id);
+      formData.set("currency", vault.currency || "USD");
+
+      if (source === "keep") {
+        formData.set("previewUrl", vault.previewUrl);
+        formData.set("previewVideoUrl", vault.previewVideoUrl ?? "");
+        formData.set("demoIndexUrl", vault.demoIndexUrl ?? "");
+        formData.set("originalFileUrl", vault.originalFileUrl);
+      } else if (source === "stock") {
+        if (!selected) throw new Error("Choose a stock pack.");
+        formData.set("previewUrl", selected.previewUrl);
+        formData.set("previewVideoUrl", selected.previewVideoUrl ?? "");
+        formData.set("demoIndexUrl", selected.demoIndexUrl ?? "");
+        formData.set("originalFileUrl", selected.originalFileUrl);
+      } else {
         const previewFile = formData.get("previewFile");
         const previewVideoFile = formData.get("previewVideoFile");
         const demoZipFile = formData.get("demoZipFile");
@@ -48,41 +79,40 @@ export function CreateVaultForm({ clients }: { clients: ClientOption[] }) {
         const hasImage = previewFile instanceof File && previewFile.size > 0;
         const hasVideo = previewVideoFile instanceof File && previewVideoFile.size > 0;
         const hasDemo = demoZipFile instanceof File && demoZipFile.size > 0;
+        const hasOriginal = originalFile instanceof File && originalFile.size > 0;
 
-        if (!hasImage && !hasVideo) {
-          throw new Error("Upload a preview image or a preview video.");
-        }
-        if (!(originalFile instanceof File) || !originalFile.size) {
-          throw new Error("Choose an original file to unlock after payment.");
-        }
+        formData.set("previewUrl", vault.previewUrl);
+        formData.set("previewVideoUrl", vault.previewVideoUrl ?? "");
+        formData.set("demoIndexUrl", vault.demoIndexUrl ?? "");
+        formData.set("originalFileUrl", vault.originalFileUrl);
 
-        const body = new FormData();
-        const [preview, original] = await Promise.all([
-          hasImage && previewFile instanceof File
-            ? compressImageFile(previewFile, { maxWidth: 1280, quality: 0.7 })
-            : Promise.resolve(null),
-          compressImageFile(originalFile, { maxWidth: 1600, quality: 0.8 }),
-        ]);
-        if (preview) body.set("preview", preview);
-        if (hasVideo && previewVideoFile instanceof File) {
-          body.set("previewVideo", previewVideoFile);
-        }
-        if (hasDemo && demoZipFile instanceof File) {
-          body.set("demoZip", demoZipFile);
-        }
-        body.set("original", original);
+        if (hasImage || hasVideo || hasDemo || hasOriginal) {
+          const body = new FormData();
+          body.set("patch", "1");
+          if (hasImage && previewFile instanceof File) {
+            body.set("preview", await compressImageFile(previewFile, { maxWidth: 1280, quality: 0.7 }));
+          }
+          if (hasVideo && previewVideoFile instanceof File) {
+            body.set("previewVideo", previewVideoFile);
+          }
+          if (hasDemo && demoZipFile instanceof File) {
+            body.set("demoZip", demoZipFile);
+          }
+          if (hasOriginal && originalFile instanceof File) {
+            body.set("original", await compressImageFile(originalFile, { maxWidth: 1600, quality: 0.8 }));
+          }
 
-        setPhase("upload");
-        await paintFrame();
-        const payload = await uploadAssets(body, setUploadPercent);
-        if (!payload.ok || !payload.originalFileUrl) {
-          throw new Error(payload.error || "Upload failed");
+          setPhase("upload");
+          await paintFrame();
+          const payload = await uploadAssets(body, setUploadPercent);
+          if (!payload.ok) {
+            throw new Error(payload.error || "Upload failed");
+          }
+          if (payload.previewUrl) formData.set("previewUrl", payload.previewUrl);
+          if (payload.previewVideoUrl) formData.set("previewVideoUrl", payload.previewVideoUrl);
+          if (payload.originalFileUrl) formData.set("originalFileUrl", payload.originalFileUrl);
+          if (payload.demoZipUrl) formData.set("demoZipUrl", payload.demoZipUrl);
         }
-
-        formData.set("previewUrl", payload.previewUrl ?? "");
-        formData.set("previewVideoUrl", payload.previewVideoUrl ?? "");
-        formData.set("originalFileUrl", payload.originalFileUrl);
-        formData.set("demoZipUrl", payload.demoZipUrl ?? "");
       }
 
       formData.delete("previewFile");
@@ -91,15 +121,16 @@ export function CreateVaultForm({ clients }: { clients: ClientOption[] }) {
       formData.delete("originalFile");
       setPhase("save");
       await paintFrame();
-      const result = await createProject(formData);
+      const result = await updateProject(formData);
       if (!result.ok) {
         setError(result.error);
         return;
       }
 
+      router.push(`/p/${vault.id}`);
       router.refresh();
     } catch (submitError) {
-      setError(submitError instanceof Error ? submitError.message : "Could not create vault");
+      setError(submitError instanceof Error ? submitError.message : "Could not update vault");
     } finally {
       setBusy(false);
       setPhase("idle");
@@ -112,7 +143,7 @@ export function CreateVaultForm({ clients }: { clients: ClientOption[] }) {
       <label className="flex flex-col gap-2 text-sm">
         Client
         {clients.length > 0 ? (
-          <select name="clientId" required className="rounded-md border p-2">
+          <select name="clientId" required defaultValue={vault.clientId} className="rounded-md border p-2">
             <option value="">Select a client...</option>
             {clients.map((client) => (
               <option key={client.id} value={client.id}>
@@ -129,106 +160,106 @@ export function CreateVaultForm({ clients }: { clients: ClientOption[] }) {
       <label className="flex flex-col gap-2 text-sm">
         Price (USD)
         <input
-          key={`${selected.id}-price`}
           name="price"
           type="number"
           min="1"
           step="0.01"
           required
-          defaultValue={selected.price}
+          defaultValue={(vault.price / 100).toFixed(2)}
           className="rounded-md border p-2"
         />
       </label>
       <label className="flex flex-col gap-2 text-sm md:col-span-2">
         Title
-        <input
-          key={`${selected.id}-title`}
-          name="title"
-          required
-          defaultValue={source === "stock" ? selected.title : ""}
-          className="rounded-md border p-2"
-        />
+        <input name="title" required defaultValue={vault.title} className="rounded-md border p-2" />
       </label>
       <label className="flex flex-col gap-2 text-sm md:col-span-2">
         Description
-        <textarea
-          key={`${selected.id}-description`}
-          name="description"
-          required
-          defaultValue={source === "stock" ? selected.description : ""}
-          className="rounded-md border p-2"
-          rows={3}
-        />
+        <textarea name="description" required defaultValue={vault.description} className="rounded-md border p-2" rows={3} />
       </label>
-      <input type="hidden" name="currency" value="USD" />
-      {source === "stock" ? (
-        <>
-          <input type="hidden" name="previewUrl" value={selected.previewUrl} />
-          <input type="hidden" name="previewVideoUrl" value={selected.previewVideoUrl ?? ""} />
-          <input type="hidden" name="demoIndexUrl" value={selected.demoIndexUrl ?? ""} />
-          <input type="hidden" name="originalFileUrl" value={selected.originalFileUrl} />
-        </>
-      ) : null}
 
       <fieldset className="md:col-span-2">
-        <legend className="mb-2 text-sm font-medium">Asset source</legend>
-        <div className="mb-3 flex gap-2">
+        <legend className="mb-2 text-sm font-medium">Assets</legend>
+        <div className="mb-3 flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => setSource("keep")}
+            className={`rounded-md px-3 py-1.5 text-sm ${source === "keep" ? "bg-slate-900 text-white" : "border"}`}
+          >
+            Keep current files
+          </button>
           <button
             type="button"
             onClick={() => setSource("stock")}
             className={`rounded-md px-3 py-1.5 text-sm ${source === "stock" ? "bg-slate-900 text-white" : "border"}`}
           >
-            Stock pack
+            Replace with stock pack
           </button>
           <button
             type="button"
             onClick={() => setSource("upload")}
             className={`rounded-md px-3 py-1.5 text-sm ${source === "upload" ? "bg-slate-900 text-white" : "border"}`}
           >
-            Upload from computer
+            Upload replacements
           </button>
         </div>
 
-        {source === "stock" ? (
+        {source === "keep" ? (
+          <div className="relative aspect-video max-w-md overflow-hidden rounded-lg border bg-slate-100">
+            <AssetImage src={vault.previewUrl} alt="Current preview" sizes="(max-width: 768px) 100vw, 448px" />
+          </div>
+        ) : null}
+
+        {source === "stock" && selected ? (
           <>
-            <p className="mb-3 text-xs text-slate-600">
-              Pick a demo pack. The landing-page pack includes a sandboxed live HTML demo.
-            </p>
+            <p className="mb-3 text-xs text-slate-600">This replaces the preview, demo, and original with the selected pack.</p>
             <div className="grid gap-3 sm:grid-cols-2">
               {STOCK_ASSETS.map((asset) => (
-                <StockPackButton
+                <button
                   key={asset.id}
-                  asset={asset}
-                  selected={asset.id === selected.id}
-                  onSelect={setSelectedId}
-                />
+                  type="button"
+                  onClick={() => setSelectedId(asset.id)}
+                  className={`overflow-hidden rounded-lg border text-left ${
+                    asset.id === selected.id ? "border-slate-900 ring-2 ring-slate-900" : "border-slate-200 hover:border-slate-400"
+                  }`}
+                >
+                  <span className="relative block aspect-video bg-slate-100">
+                    <AssetImage src={asset.previewUrl} alt="" sizes="(max-width: 640px) 100vw, 280px" />
+                  </span>
+                  <span className="block p-3">
+                    <span className="block text-sm font-medium">{asset.title}</span>
+                    <span className="mt-1 block text-xs text-slate-600">{asset.price.toFixed(2)} USD</span>
+                  </span>
+                </button>
               ))}
             </div>
           </>
-        ) : (
+        ) : null}
+
+        {source === "upload" ? (
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="flex flex-col gap-2 text-sm">
               Preview image
               <input name="previewFile" type="file" accept="image/*" className="rounded-md border p-2" />
-              <span className="text-xs text-slate-500">Poster for dashboard cards. Provide this or a video.</span>
+              <span className="text-xs text-slate-500">Leave empty to keep the current image.</span>
             </label>
             <label className="flex flex-col gap-2 text-sm">
               Preview video
               <input name="previewVideoFile" type="file" accept="video/mp4,video/webm,.mp4,.webm" className="rounded-md border p-2" />
-              <span className="text-xs text-slate-500">Optional mp4 or webm, up to 30MB. Not compressed.</span>
+              <span className="text-xs text-slate-500">Optional mp4 or webm, up to 30MB.</span>
             </label>
             <label className="flex flex-col gap-2 text-sm">
               Live demo zip
               <input name="demoZipFile" type="file" accept=".zip,application/zip" className="rounded-md border p-2" />
-              <span className="text-xs text-slate-500">Optional static HTML/CSS/JS with index.html at the root. 5MB max.</span>
+              <span className="text-xs text-slate-500">Optional static HTML zip with index.html.</span>
             </label>
             <label className="flex flex-col gap-2 text-sm">
               Original file
-              <input name="originalFile" type="file" required={source === "upload"} className="rounded-md border p-2" />
-              <span className="text-xs text-slate-500">Unlocked after payment. Images are resized; zip/pdf stay as-is.</span>
+              <input name="originalFile" type="file" className="rounded-md border p-2" />
+              <span className="text-xs text-slate-500">Leave empty to keep the current original.</span>
             </label>
           </div>
-        )}
+        ) : null}
       </fieldset>
 
       {error ? <p className="text-sm text-red-600 md:col-span-2">{error}</p> : null}
@@ -261,41 +292,8 @@ export function CreateVaultForm({ clients }: { clients: ClientOption[] }) {
             : phase === "compress"
               ? "Preparing files…"
               : "Saving vault…"
-          : "Create Vault"}
+          : "Save changes"}
       </button>
     </form>
-  );
-}
-
-function StockPackButton({
-  asset,
-  selected,
-  onSelect,
-}: {
-  asset: StockAsset;
-  selected: boolean;
-  onSelect: (id: string) => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={() => onSelect(asset.id)}
-      className={`overflow-hidden rounded-lg border text-left ${
-        selected ? "border-slate-900 ring-2 ring-slate-900" : "border-slate-200 hover:border-slate-400"
-      }`}
-    >
-      <span className="relative block aspect-video bg-slate-100">
-        <AssetImage src={asset.previewUrl} alt="" sizes="(max-width: 640px) 100vw, 280px" />
-      </span>
-      <span className="block p-3">
-        <span className="block text-sm font-medium">{asset.title}</span>
-        <span className="mt-1 block text-xs text-slate-600">{asset.price.toFixed(2)} USD</span>
-        {asset.demoIndexUrl ? (
-          <span className="mt-2 inline-block rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700">
-            Live demo
-          </span>
-        ) : null}
-      </span>
-    </button>
   );
 }

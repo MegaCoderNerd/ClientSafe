@@ -85,6 +85,8 @@ async function ensureProject(options: {
 
   const assetPayload = {
     previewUrl: stock.previewUrl,
+    previewVideoUrl: stock.previewVideoUrl ?? null,
+    demoIndexUrl: stock.demoIndexUrl ?? null,
     originalFileUrl: stock.originalFileUrl,
     isUnlocked: options.isUnlocked,
     projectId: options.id,
@@ -114,11 +116,14 @@ export async function ensureDemoWorkspace() {
     const brand = STOCK_ASSETS.find((asset) => asset.id === "brand-kit");
     const { data: existingAssets } = await supabase
       .from("Asset")
-      .select("projectId, previewUrl")
+      .select("projectId, previewUrl, demoIndexUrl")
       .in("projectId", ["demo-locked-project", "demo-unlocked-project"]);
 
     const lockedReady = existingAssets?.some(
-      (asset) => asset.projectId === "demo-locked-project" && asset.previewUrl === landing?.previewUrl,
+      (asset) =>
+        asset.projectId === "demo-locked-project" &&
+        asset.previewUrl === landing?.previewUrl &&
+        asset.demoIndexUrl === landing?.demoIndexUrl,
     );
     const unlockedReady = existingAssets?.some(
       (asset) => asset.projectId === "demo-unlocked-project" && asset.previewUrl === brand?.previewUrl,

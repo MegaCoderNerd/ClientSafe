@@ -1,10 +1,11 @@
-import { AssetImage } from "@/components/asset-image";
 import { Chat } from "@/components/chat";
 import { DownloadOriginalLink } from "@/components/download-original-link";
 import { SupabaseLiveRefresh } from "@/components/supabase-live-refresh";
+import { VaultPreviewStage } from "@/components/vault-preview-stage";
 import { PayButton } from "@/app/p/[projectId]/pay-button";
 import { PayPalReturnHandler } from "@/app/p/[projectId]/paypal-return-handler";
 import { authOptions } from "@/lib/auth";
+import { withDemoAccessToken } from "@/lib/demo-access";
 import { feesForStoredVault } from "@/lib/paypal";
 import { createProtectedDownloadLink, getPreviewAssetUrl } from "@/lib/storage";
 import { supabase } from "@/lib/supabase";
@@ -37,7 +38,7 @@ export default async function ClientPreviewPage({ params, searchParams }: Props)
     // שולף את נתוני הפרויקט, כולל נתוני הפרילנסר ונתוני הלקוח כדי שנוכל להציג את השם בצ'אט
     const { data: projectData, error } = await supabase
         .from("DeliveryProject")
-        .select("id, title, description, price, currency, paymentStatus, freelancerId, platformFeePercent, platformFeeAmount, freelancerPayoutAmount, freelancer:User!freelancerId(name), client:User!clientId(name), asset:Asset(id, previewUrl, isUnlocked)")
+        .select("id, title, description, price, currency, paymentStatus, freelancerId, platformFeePercent, platformFeeAmount, freelancerPayoutAmount, freelancer:User!freelancerId(name), client:User!clientId(name), asset:Asset(id, previewUrl, previewVideoUrl, demoIndexUrl, isUnlocked)")
         .eq("id", projectId)
         .single();
 
@@ -54,7 +55,13 @@ export default async function ClientPreviewPage({ params, searchParams }: Props)
         notFound();
     }
 
-    const previewUrl = getPreviewAssetUrl(assetData.previewUrl);
+    const previewUrl = assetData.previewUrl ? getPreviewAssetUrl(assetData.previewUrl) : null;
+    const isFallbackPoster = typeof assetData.previewUrl === "string" && assetData.previewUrl.includes("video-poster.svg");
+    const imageSrc = previewUrl && !isFallbackPoster ? previewUrl : null;
+    const videoSrc = assetData.previewVideoUrl || null;
+    const demoSrc = assetData.demoIndexUrl
+      ? withDemoAccessToken(assetData.demoIndexUrl, assetData.id)
+      : null;
     const protectedDownloadUrl = createProtectedDownloadLink(assetData.id);
 
     const isVaultOwner = currentUserId === projectData.freelancerId;
@@ -82,7 +89,14 @@ export default async function ClientPreviewPage({ params, searchParams }: Props)
             <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
                 <div className="flex flex-col gap-6">
                     <section className="rounded-xl border bg-white p-6 shadow-sm">
-                        <h1 className="text-2xl font-semibold">{projectData.title}</h1>
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                            <h1 className="text-2xl font-semibold">{projectData.title}</h1>
+                            {isVaultOwner && projectData.paymentStatus === "PENDING" ? (
+                                <Link href={`/p/${projectData.id}/edit`} className="rounded-md border px-3 py-1.5 text-sm hover:bg-slate-50">
+                                    Edit vault
+                                </Link>
+                            ) : null}
+                        </div>
                         <p className="mt-2 text-slate-700">{projectData.description}</p>
                         <p className="mt-4 text-sm text-slate-600">Freelancer: {freelancerData?.name}</p>
                         <p className="text-sm text-slate-600">Price: {(projectData.price / 100).toFixed(2)} {projectData.currency.toUpperCase()}</p>
@@ -96,32 +110,16 @@ export default async function ClientPreviewPage({ params, searchParams }: Props)
                         )}
                     </section>
 
-                    {isVaultOwner || projectData.paymentStatus === "COMPLETED" ? (
-                        <section className="rounded-xl border bg-white p-6 shadow-sm">
-                            <h2 className="text-xl font-semibold">Asset Preview</h2>
-                            <div className="relative mt-4 aspect-video overflow-hidden rounded-lg border bg-slate-100">
-                                <AssetImage
-                                    src={previewUrl}
-                                    alt={`${projectData.title} preview`}
-                                    sizes="(max-width: 1024px) 100vw, 720px"
-                                    preload
-                                />
-                            </div>
-                        </section>
-                    ) : (
-                        <section className="rounded-xl border bg-white p-6 shadow-sm">
-                            <h2 className="text-xl font-semibold">Asset Preview</h2>
-                            <div className="relative mt-4 aspect-video overflow-hidden rounded-lg border bg-slate-100">
-                                <AssetImage
-                                    src={previewUrl}
-                                    alt={`${projectData.title} preview`}
-                                    sizes="(max-width: 1024px) 100vw, 720px"
-                                    preload
-                                />
-                            </div>
-                            <p className="mt-4 text-sm text-slate-600 italic">This is a watermarked preview. Purchase to download the full version.</p>
-                        </section>
-                    )}
+                    <VaultPreviewStage
+                        projectId={projectData.id}
+                        title={projectData.title}
+                        imageSrc={imageSrc}
+                        videoSrc={videoSrc}
+                        posterSrc={previewUrl}
+                        demoSrc={demoSrc}
+                        isOwner={isVaultOwner}
+                        isPaid={projectData.paymentStatus === "COMPLETED"}
+                    />
 
                     <section className="rounded-xl border bg-white p-6 shadow-sm">
                         {isVaultOwner ? (

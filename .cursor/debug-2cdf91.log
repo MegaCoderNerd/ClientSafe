@@ -1,0 +1,3 @@
+{"sessionId":"2cdf91","runId":"post-fix","hypothesisId":"A","location":"components/create-vault-form.tsx:compress","message":"client compress phase done","data":{"ms":0,"previewBytes":0,"videoBytes":20534631,"demoBytes":0,"originalBytes":74954710},"timestamp":1787072872759}
+{"sessionId":"2cdf91","runId":"pre-fix","hypothesisId":"A","location":"lib/compress-image.ts:skip","message":"compress skipped","data":{"type":"application/zip","inBytes":74954710,"ms":0},"timestamp":1787072872759}
+{"sessionId":"2cdf91","runId":"post-fix","hypothesisId":"B","location":"components/create-vault-form.tsx:upload","message":"multipart upload finished","data":{"ms":896,"ok":false,"status":500,"progress":true},"timestamp":1787072873667}

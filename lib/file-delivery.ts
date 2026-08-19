@@ -1,5 +1,7 @@
-import { readFile, stat } from "fs/promises";
+import { createReadStream } from "fs";
+import { stat } from "fs/promises";
 import path from "path";
+import { Readable } from "stream";
 import { NextResponse } from "next/server";
 
 const PUBLIC_ROOT = path.resolve(process.cwd(), "public");
@@ -11,7 +13,16 @@ export function contentTypeFor(filePath: string) {
   if (filePath.endsWith(".png")) return "image/png";
   if (filePath.endsWith(".jpg") || filePath.endsWith(".jpeg")) return "image/jpeg";
   if (filePath.endsWith(".svg")) return "image/svg+xml";
+  if (filePath.endsWith(".gif")) return "image/gif";
   if (filePath.endsWith(".pdf")) return "application/pdf";
+  if (filePath.endsWith(".mp4")) return "video/mp4";
+  if (filePath.endsWith(".webm")) return "video/webm";
+  if (filePath.endsWith(".html") || filePath.endsWith(".htm")) return "text/html; charset=utf-8";
+  if (filePath.endsWith(".css")) return "text/css; charset=utf-8";
+  if (filePath.endsWith(".js")) return "text/javascript; charset=utf-8";
+  if (filePath.endsWith(".json")) return "application/json";
+  if (filePath.endsWith(".woff")) return "font/woff";
+  if (filePath.endsWith(".woff2")) return "font/woff2";
   return "application/octet-stream";
 }
 
@@ -41,7 +52,9 @@ function contentDisposition(fileName: string) {
 }
 
 export async function streamLocalFile(filePath: string, fileName: string) {
-  const [fileStat, body] = await Promise.all([stat(filePath), readFile(filePath)]);
+  const fileStat = await stat(filePath);
+  const nodeStream = createReadStream(filePath);
+  const body = Readable.toWeb(nodeStream) as ReadableStream<Uint8Array>;
 
   return new NextResponse(body, {
     headers: {
@@ -51,6 +64,7 @@ export async function streamLocalFile(filePath: string, fileName: string) {
       "Cache-Control": "private, no-store, no-cache, must-revalidate",
       "Pragma": "no-cache",
       "X-Content-Type-Options": "nosniff",
+      "Accept-Ranges": "bytes",
     },
   });
 }

@@ -37,6 +37,8 @@ model DeliveryProject {
   freelancerPayoutAmount Int?
   freelancerId           String
   clientId               String
+  createdAt              DateTime      @default(now())
+  paidAt                 DateTime?
   freelancer             User          @relation("FreelancerProjects", fields: [freelancerId], references: [id])
   client                 User          @relation("ClientProjects", fields: [clientId], references: [id])
   asset                  Asset?
@@ -47,6 +49,8 @@ model Asset {
   id              String          @id @default(cuid())
   projectId       String          @unique
   previewUrl      String
+  previewVideoUrl String?
+  demoIndexUrl    String?
   originalFileUrl String
   isUnlocked      Boolean         @default(false)
   project         DeliveryProject @relation(fields: [projectId], references: [id])

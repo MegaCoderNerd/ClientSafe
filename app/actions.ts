@@ -1,10 +1,15 @@
 "use server";
 
 import { randomUUID } from "crypto";
+import { readFile } from "fs/promises";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
+import { extractDemoZip } from "@/lib/extract-demo";
+import { resolveDeliverableFile } from "@/lib/file-delivery";
 import { getPlatformFeePercent, splitVaultPrice } from "@/lib/paypal";
+import { createDemoPreviewLink } from "@/lib/preview";
+import { STOCK_ASSETS } from "@/lib/stock-assets";
 import { supabase } from "@/lib/supabase";
 
 type ActionResult = { ok: true; projectId: string } | { ok: false; error: string };
@@ -52,6 +57,9 @@ export async function createProject(formData: FormData): Promise<ActionResult> {
   const description = String(formData.get("description") ?? "").trim();
   const currency = String(formData.get("currency") ?? "USD").trim().toUpperCase();
   const previewUrl = String(formData.get("previewUrl") ?? "").trim();
+  const previewVideoUrl = String(formData.get("previewVideoUrl") ?? "").trim();
+  const demoIndexUrl = String(formData.get("demoIndexUrl") ?? "").trim();
+  const demoZipUrl = String(formData.get("demoZipUrl") ?? "").trim();
   const originalFileUrl = String(formData.get("originalFileUrl") ?? "").trim();
   const priceInDollars = Number(formData.get("price") ?? "0");
 
@@ -60,15 +68,21 @@ export async function createProject(formData: FormData): Promise<ActionResult> {
     !title ||
     !description ||
     !currency ||
-    !previewUrl ||
     !originalFileUrl ||
+    (!previewUrl && !previewVideoUrl) ||
     Number.isNaN(priceInDollars) ||
     priceInDollars <= 0
   ) {
     return { ok: false, error: "Please provide valid vault and asset details." };
   }
 
-  const freelancerId = await resolveUserId(session.user);
+  const freelancerLookup = resolveUserId(session.user);
+  const clientLookup = supabase.from("User").select("id").eq("id", clientId).maybeSingle();
+  const [{ freelancerId }, { data: client }] = await Promise.all([
+    freelancerLookup.then((id) => ({ freelancerId: id })),
+    clientLookup,
+  ]);
+
   if (!freelancerId) {
     return { ok: false, error: "Your account was not found. Sign out and sign in again." };
   }
@@ -77,7 +91,13 @@ export async function createProject(formData: FormData): Promise<ActionResult> {
     return { ok: false, error: "Choose a client other than yourself." };
   }
 
-  const { data: client } = await supabase.from("User").select("id").eq("id", clientId).maybeSingle();
+  if (demoIndexUrl && !demoZipUrl) {
+    const allowedStockDemo = STOCK_ASSETS.some((asset) => asset.demoIndexUrl === demoIndexUrl);
+    if (!allowedStockDemo) {
+      return { ok: false, error: "Invalid live demo preview." };
+    }
+  }
+
   if (!client?.id) {
     return { ok: false, error: "Selected client was not found." };
   }
@@ -100,6 +120,7 @@ export async function createProject(formData: FormData): Promise<ActionResult> {
       platformFeePercent: fees.platformFeePercent,
       platformFeeAmount: fees.platformFeeAmount,
       freelancerPayoutAmount: fees.freelancerPayoutAmount,
+      createdAt: new Date().toISOString(),
     })
     .select("id")
     .single();
@@ -109,10 +130,35 @@ export async function createProject(formData: FormData): Promise<ActionResult> {
     return { ok: false, error: publicError(projectError, "Failed to create project") };
   }
 
+  const assetId = randomUUID();
+  let resolvedDemoIndex = demoIndexUrl || null;
+
+  if (demoZipUrl) {
+    const zipPath = resolveDeliverableFile(demoZipUrl);
+    if (!zipPath) {
+      await supabase.from("DeliveryProject").delete().eq("id", project.id);
+      return { ok: false, error: "Demo zip could not be read." };
+    }
+    try {
+      const zipBytes = await readFile(zipPath);
+      const indexPath = await extractDemoZip(assetId, zipBytes);
+      resolvedDemoIndex = createDemoPreviewLink(assetId, indexPath);
+    } catch (demoError) {
+      console.error("[createProject] demo extract failed", demoError);
+      await supabase.from("DeliveryProject").delete().eq("id", project.id);
+      return {
+        ok: false,
+        error: demoError instanceof Error ? demoError.message : "Failed to extract demo zip",
+      };
+    }
+  }
+
   const { error: assetError } = await supabase.from("Asset").insert({
-    id: randomUUID(),
+    id: assetId,
     projectId: project.id,
-    previewUrl,
+    previewUrl: previewUrl || "/stock/video-poster.svg",
+    previewVideoUrl: previewVideoUrl || null,
+    demoIndexUrl: resolvedDemoIndex,
     originalFileUrl,
     isUnlocked: false,
   });
@@ -124,5 +170,155 @@ export async function createProject(formData: FormData): Promise<ActionResult> {
   }
 
   revalidatePath("/");
+  return { ok: true, projectId: project.id };
+}
+
+async function extractUploadedDemo(assetId: string, demoZipUrl: string) {
+  const zipPath = resolveDeliverableFile(demoZipUrl);
+  if (!zipPath) {
+    throw new Error("Demo zip could not be read.");
+  }
+  const zipBytes = await readFile(zipPath);
+  const indexPath = await extractDemoZip(assetId, zipBytes);
+  return createDemoPreviewLink(assetId, indexPath);
+}
+
+export async function updateProject(formData: FormData): Promise<ActionResult> {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) {
+    return { ok: false, error: "Authentication required to edit a vault." };
+  }
+
+  const projectId = String(formData.get("projectId") ?? "").trim();
+  const clientId = String(formData.get("clientId") ?? "").trim();
+  const title = String(formData.get("title") ?? "").trim();
+  const description = String(formData.get("description") ?? "").trim();
+  const currency = String(formData.get("currency") ?? "USD").trim().toUpperCase();
+  const previewUrl = String(formData.get("previewUrl") ?? "").trim();
+  const previewVideoUrl = String(formData.get("previewVideoUrl") ?? "").trim();
+  const demoIndexUrl = String(formData.get("demoIndexUrl") ?? "").trim();
+  const demoZipUrl = String(formData.get("demoZipUrl") ?? "").trim();
+  const originalFileUrl = String(formData.get("originalFileUrl") ?? "").trim();
+  const priceInDollars = Number(formData.get("price") ?? "0");
+
+  if (
+    !projectId ||
+    !clientId ||
+    !title ||
+    !description ||
+    !currency ||
+    Number.isNaN(priceInDollars) ||
+    priceInDollars <= 0
+  ) {
+    return { ok: false, error: "Please provide valid vault details." };
+  }
+
+  const freelancerId = await resolveUserId(session.user);
+  if (!freelancerId) {
+    return { ok: false, error: "Your account was not found. Sign out and sign in again." };
+  }
+
+  if (clientId === freelancerId) {
+    return { ok: false, error: "Choose a client other than yourself." };
+  }
+
+  const { data: client } = await supabase.from("User").select("id").eq("id", clientId).maybeSingle();
+  if (!client?.id) {
+    return { ok: false, error: "Selected client was not found." };
+  }
+
+  const { data: project, error: projectError } = await supabase
+    .from("DeliveryProject")
+    .select("id, freelancerId, clientId, paymentStatus, price, asset:Asset(id, previewUrl, previewVideoUrl, demoIndexUrl, originalFileUrl)")
+    .eq("id", projectId)
+    .maybeSingle();
+
+  if (projectError || !project) {
+    return { ok: false, error: "Vault not found." };
+  }
+
+  if (project.freelancerId !== freelancerId) {
+    return { ok: false, error: "Only the vault owner can edit this delivery." };
+  }
+
+  if (project.paymentStatus !== "PENDING") {
+    return { ok: false, error: "Paid vaults cannot be edited." };
+  }
+
+  const asset = Array.isArray(project.asset) ? project.asset[0] : project.asset;
+  if (!asset?.id) {
+    return { ok: false, error: "Vault asset was not found." };
+  }
+
+  const nextPreviewUrl = previewUrl || asset.previewUrl;
+  const nextOriginalUrl = originalFileUrl || asset.originalFileUrl;
+
+  if (!nextPreviewUrl && !previewVideoUrl) {
+    return { ok: false, error: "A preview image or video is required." };
+  }
+
+  if (demoIndexUrl && !demoZipUrl && demoIndexUrl !== asset.demoIndexUrl) {
+    const allowedStockDemo = STOCK_ASSETS.some((item) => item.demoIndexUrl === demoIndexUrl);
+    if (!allowedStockDemo) {
+      return { ok: false, error: "Invalid live demo preview." };
+    }
+  }
+
+  const price = Math.round(priceInDollars * 100);
+  const fees = splitVaultPrice(price, getPlatformFeePercent());
+  const clientOrPriceChanged = clientId !== project.clientId || price !== project.price;
+
+  let resolvedDemoIndex = demoIndexUrl || null;
+  if (demoZipUrl) {
+    try {
+      resolvedDemoIndex = await extractUploadedDemo(asset.id, demoZipUrl);
+    } catch (demoError) {
+      console.error("[updateProject] demo extract failed", demoError);
+      return {
+        ok: false,
+        error: demoError instanceof Error ? demoError.message : "Failed to extract demo zip",
+      };
+    }
+  }
+
+  const { error: updateError } = await supabase
+    .from("DeliveryProject")
+    .update({
+      title,
+      description,
+      currency,
+      price,
+      clientId,
+      platformFeePercent: fees.platformFeePercent,
+      platformFeeAmount: fees.platformFeeAmount,
+      freelancerPayoutAmount: fees.freelancerPayoutAmount,
+      ...(clientOrPriceChanged ? { paypalOrderId: null } : {}),
+    })
+    .eq("id", project.id)
+    .eq("paymentStatus", "PENDING");
+
+  if (updateError) {
+    console.error("[updateProject] project update failed", updateError);
+    return { ok: false, error: publicError(updateError, "Failed to update vault") };
+  }
+
+  const { error: assetError } = await supabase
+    .from("Asset")
+    .update({
+      previewUrl: nextPreviewUrl || "/stock/video-poster.svg",
+      previewVideoUrl: previewVideoUrl || null,
+      demoIndexUrl: resolvedDemoIndex,
+      originalFileUrl: nextOriginalUrl,
+    })
+    .eq("id", asset.id);
+
+  if (assetError) {
+    console.error("[updateProject] asset update failed", assetError);
+    return { ok: false, error: publicError(assetError, "Failed to update asset") };
+  }
+
+  revalidatePath("/");
+  revalidatePath(`/p/${project.id}`);
+  revalidatePath(`/p/${project.id}/edit`);
   return { ok: true, projectId: project.id };
 }

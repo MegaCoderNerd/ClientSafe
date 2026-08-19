@@ -1,6 +1,7 @@
 import { CreateVaultForm } from "@/components/create-vault-form";
-import { AssetImage } from "@/components/asset-image";
+import { AssetPreview } from "@/components/asset-preview";
 import { DownloadOriginalLink } from "@/components/download-original-link";
+import { ProjectOverview, type OverviewProject } from "@/components/project-overview";
 import { SupabaseLiveRefresh } from "@/components/supabase-live-refresh";
 import { authOptions } from "@/lib/auth";
 import { ensureDemoWorkspace } from "@/lib/demo-data";
@@ -51,13 +52,13 @@ export default async function HomePage() {
         .order("email", { ascending: true }),
     supabase
         .from("DeliveryProject")
-        .select("id, title, description, price, currency, paymentStatus, freelancer:User!freelancerId(name, email), asset:Asset(id, previewUrl, isUnlocked)")
+        .select("id, title, description, price, currency, paymentStatus, freelancer:User!freelancerId(name, email), asset:Asset(id, previewUrl, previewVideoUrl, demoIndexUrl, isUnlocked)")
         .eq("clientId", session.user.id)
         .neq("freelancerId", session.user.id)
         .order("title", { ascending: true }),
     supabase
         .from("DeliveryProject")
-        .select("id, title, description, price, currency, paymentStatus, client:User!clientId(name, email)")
+        .select("id, title, description, price, currency, paymentStatus, platformFeeAmount, freelancerPayoutAmount, createdAt, paidAt, client:User!clientId(name, email)")
         .eq("freelancerId", session.user.id)
         .order("title", { ascending: true }),
   ]);
@@ -66,6 +67,21 @@ export default async function HomePage() {
   const safeClients = clients || [];
   const safeClientProjects = clientProjects || [];
   const safeFreelancerProjects = freelancerProjects || [];
+  const overviewProjects: OverviewProject[] = safeFreelancerProjects.map((project: any) => {
+    const clientData = Array.isArray(project.client) ? project.client[0] : project.client;
+    return {
+      id: project.id,
+      title: project.title,
+      price: project.price,
+      currency: project.currency,
+      paymentStatus: project.paymentStatus,
+      freelancerPayoutAmount: project.freelancerPayoutAmount ?? null,
+      platformFeeAmount: project.platformFeeAmount ?? null,
+      paidAt: project.paidAt ?? null,
+      clientName: clientData?.name ?? "Client",
+      clientEmail: clientData?.email ?? "",
+    };
+  });
 
   return (
       <main className="mx-auto flex max-w-5xl flex-col gap-8 p-8">
@@ -75,6 +91,8 @@ export default async function HomePage() {
           <h1 className="text-3xl font-bold">Welcome, {session.user.name ?? session.user.email}</h1>
           <p className="mt-2 text-slate-600">Manage your vaults and deliveries in one place.</p>
         </section>
+
+        {overviewProjects.length > 0 ? <ProjectOverview projects={overviewProjects} /> : null}
 
         {/* Create New Vault Section (Freelancer) */}
         <section className="rounded-xl border bg-white p-6 shadow-sm">
@@ -104,9 +122,16 @@ export default async function HomePage() {
                               {project.price / 100} {project.currency} • Status: <span className={project.paymentStatus === "COMPLETED" ? "text-green-600" : "text-yellow-600"}>{project.paymentStatus}</span>
                             </p>
                           </div>
-                          <Link href={`/p/${project.id}`} className="ml-4 px-3 py-2 rounded-md bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 whitespace-nowrap">
+                          <div className="ml-4 flex shrink-0 flex-col gap-2">
+                          <Link href={`/p/${project.id}`} className="px-3 py-2 rounded-md bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 whitespace-nowrap text-center">
                             View
                           </Link>
+                          {project.paymentStatus === "PENDING" ? (
+                            <Link href={`/p/${project.id}/edit`} className="px-3 py-2 rounded-md border text-sm font-medium hover:bg-white whitespace-nowrap text-center">
+                              Edit
+                            </Link>
+                          ) : null}
+                          </div>
                         </div>
                       </li>
                   );
@@ -128,7 +153,8 @@ export default async function HomePage() {
                   const assetData = Array.isArray(project.asset) ? project.asset[0] : project.asset;
                   const freelancerData = Array.isArray(project.freelancer) ? project.freelancer[0] : project.freelancer;
 
-                  const previewUrl = assetData ? getPreviewAssetUrl(assetData.previewUrl) : null;
+                  const previewUrl = assetData?.previewUrl ? getPreviewAssetUrl(assetData.previewUrl) : null;
+                  const previewVideoUrl = assetData?.previewVideoUrl || null;
                   const protectedDownloadUrl = assetData ? createProtectedDownloadLink(assetData.id) : null;
 
                   return (
@@ -144,12 +170,14 @@ export default async function HomePage() {
                           </div>
                         </div>
 
-                        {previewUrl ? (
+                        {previewUrl || previewVideoUrl ? (
                             <div className="relative aspect-video overflow-hidden rounded-lg border bg-slate-100 mb-3">
-                              <AssetImage
-                                src={previewUrl}
+                              <AssetPreview
+                                imageSrc={previewUrl}
+                                videoSrc={previewVideoUrl}
                                 alt={`${project.title} preview`}
                                 sizes="(max-width: 768px) 100vw, 640px"
+                                showPlayBadge={Boolean(previewVideoUrl)}
                               />
                             </div>
                         ) : null}

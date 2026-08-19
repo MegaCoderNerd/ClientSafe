@@ -32,6 +32,7 @@ async function main() {
       asset: {
         update: {
           previewUrl: "/stock/landing-page/preview.webp",
+          demoIndexUrl: "/stock/landing-page/demo/index.html",
           originalFileUrl: "/stock/landing-page/original.zip",
           isUnlocked: false,
         },
@@ -49,6 +50,7 @@ async function main() {
       asset: {
         create: {
           previewUrl: "/stock/landing-page/preview.webp",
+          demoIndexUrl: "/stock/landing-page/demo/index.html",
           originalFileUrl: "/stock/landing-page/original.zip",
           isUnlocked: false,
         },

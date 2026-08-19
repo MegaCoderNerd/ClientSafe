@@ -4,6 +4,8 @@ export type StockAsset = {
   description: string;
   price: number;
   previewUrl: string;
+  previewVideoUrl?: string;
+  demoIndexUrl?: string;
   originalFileUrl: string;
   originalFileName: string;
 };
@@ -15,6 +17,7 @@ export const STOCK_ASSETS: StockAsset[] = [
     description: "North Harbor coffee site. Watermarked preview until payment unlocks the HTML/CSS source zip.",
     price: 49.99,
     previewUrl: "/stock/landing-page/preview.webp",
+    demoIndexUrl: "/stock/landing-page/demo/index.html",
     originalFileUrl: "/stock/landing-page/original.zip",
     originalFileName: "north-harbor-landing-page.zip",
   },
