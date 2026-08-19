@@ -1,10 +1,12 @@
 import { CreateVaultForm } from "@/components/create-vault-form";
 import { AssetPreview } from "@/components/asset-preview";
+import { DeleteVaultButton } from "@/components/delete-vault-button";
 import { DownloadOriginalLink } from "@/components/download-original-link";
 import { ProjectOverview, type OverviewProject } from "@/components/project-overview";
 import { SupabaseLiveRefresh } from "@/components/supabase-live-refresh";
 import { authOptions } from "@/lib/auth";
 import { ensureDemoWorkspace } from "@/lib/demo-data";
+import { fetchFreelancerProjects } from "@/lib/delivery-project";
 import { createProtectedDownloadLink, getPreviewAssetUrl } from "@/lib/storage";
 import { supabase } from "@/lib/supabase";
 import { getServerSession } from "next-auth";
@@ -43,7 +45,7 @@ export default async function HomePage() {
   const [
     { data: clients },
     { data: clientProjects },
-    { data: freelancerProjects }
+    freelancerProjects,
   ] = await Promise.all([
     supabase
         .from("User")
@@ -56,17 +58,14 @@ export default async function HomePage() {
         .eq("clientId", session.user.id)
         .neq("freelancerId", session.user.id)
         .order("title", { ascending: true }),
-    supabase
-        .from("DeliveryProject")
-        .select("id, title, description, price, currency, paymentStatus, platformFeeAmount, freelancerPayoutAmount, createdAt, paidAt, client:User!clientId(name, email)")
-        .eq("freelancerId", session.user.id)
-        .order("title", { ascending: true }),
+    fetchFreelancerProjects(session.user.id),
   ]);
 
   // Fallbacks in case data is null
   const safeClients = clients || [];
   const safeClientProjects = clientProjects || [];
   const safeFreelancerProjects = freelancerProjects || [];
+
   const overviewProjects: OverviewProject[] = safeFreelancerProjects.map((project: any) => {
     const clientData = Array.isArray(project.client) ? project.client[0] : project.client;
     return {
@@ -78,13 +77,14 @@ export default async function HomePage() {
       freelancerPayoutAmount: project.freelancerPayoutAmount ?? null,
       platformFeeAmount: project.platformFeeAmount ?? null,
       paidAt: project.paidAt ?? null,
+      checkoutStartedAt: project.checkoutStartedAt ?? null,
       clientName: clientData?.name ?? "Client",
       clientEmail: clientData?.email ?? "",
     };
   });
 
   return (
-      <main className="mx-auto flex max-w-5xl flex-col gap-8 p-8">
+      <main className="mx-auto flex max-w-5xl flex-col gap-8 p-4 sm:p-8">
         <SupabaseLiveRefresh tables={[{ table: "DeliveryProject" }, { table: "Asset" }, { table: "User" }]} />
         {/* Welcome Section */}
         <section className="rounded-xl border bg-white p-6 shadow-sm">
@@ -127,9 +127,17 @@ export default async function HomePage() {
                             View
                           </Link>
                           {project.paymentStatus === "PENDING" ? (
-                            <Link href={`/p/${project.id}/edit`} className="px-3 py-2 rounded-md border text-sm font-medium hover:bg-white whitespace-nowrap text-center">
-                              Edit
-                            </Link>
+                            <>
+                              <Link href={`/p/${project.id}/edit`} className="px-3 py-2 rounded-md border text-sm font-medium hover:bg-white whitespace-nowrap text-center">
+                                Edit
+                              </Link>
+                              <DeleteVaultButton
+                                projectId={project.id}
+                                paymentStatus={project.paymentStatus}
+                                checkoutStartedAt={project.checkoutStartedAt}
+                                className="px-3 py-2 w-full"
+                              />
+                            </>
                           ) : null}
                           </div>
                         </div>

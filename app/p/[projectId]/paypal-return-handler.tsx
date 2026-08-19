@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 type Props = {
@@ -11,8 +11,11 @@ type Props = {
 export function PayPalReturnHandler({ projectId, token }: Props) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
+  const started = useRef(false);
 
   useEffect(() => {
+    if (started.current) return;
+    started.current = true;
     let cancelled = false;
 
     async function capture() {
@@ -22,9 +25,13 @@ export function PayPalReturnHandler({ projectId, token }: Props) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ token, projectId }),
         });
-        const data = (await response.json()) as { error?: string };
+        const data = (await response.json()) as { error?: string; issue?: string | null };
         if (!response.ok) {
-          throw new Error(data.error || "PayPal could not confirm this payment.");
+          const issue = data.issue || "capture_failed";
+          if (!cancelled) {
+            router.replace(`/p/${projectId}?payError=${encodeURIComponent(issue)}`);
+          }
+          return;
         }
         if (!cancelled) {
           router.replace(`/p/${projectId}`);

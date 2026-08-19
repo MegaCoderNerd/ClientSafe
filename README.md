@@ -54,6 +54,7 @@ ClientVault is a full-stack Next.js app for secure freelancer-to-client asset de
    ```
 
 Apply the PayPal fee columns once in the Supabase SQL editor using `prisma/migrations/20260815231800_paypal_fees/migration.sql`.
+Apply unpaid vault deletion (checkout grace + asset cascade) with `prisma/migrations/20260819180000_vault_delete_checkout_grace/migration.sql`.
 
 ## Run the App
 

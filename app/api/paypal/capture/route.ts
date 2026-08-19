@@ -1,4 +1,5 @@
 import { captureAndFulfillPayPalOrder } from "@/lib/fulfill-payment";
+import { PayPalApiError } from "@/lib/paypal";
 import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
@@ -17,10 +18,14 @@ export async function POST(request: Request) {
   }
 
   try {
-    await captureAndFulfillPayPalOrder(orderId, body.projectId);
+    const result = await captureAndFulfillPayPalOrder(orderId, body.projectId);
+    if (result.missing) {
+      return NextResponse.json({ error: "This vault is no longer available." }, { status: 404 });
+    }
     return NextResponse.json({ ok: true });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unable to capture PayPal payment.";
-    return NextResponse.json({ error: message }, { status: 400 });
+    const issue = error instanceof PayPalApiError ? error.issue : null;
+    return NextResponse.json({ error: message, issue }, { status: 400 });
   }
 }

@@ -1,5 +1,7 @@
+import { DeleteVaultButton } from "@/components/delete-vault-button";
 import { EditVaultForm } from "@/components/edit-vault-form";
 import { authOptions } from "@/lib/auth";
+import { fetchDeliveryProjectById } from "@/lib/delivery-project";
 import { supabase } from "@/lib/supabase";
 import { getServerSession } from "next-auth";
 import Link from "next/link";
@@ -15,14 +17,16 @@ export default async function EditVaultPage({ params }: Props) {
   const { projectId } = await params;
   const session = await getServerSession(authOptions);
   const currentUserId = session?.user?.id;
-  if (!currentUserId) notFound();
+  if (!currentUserId) {
+    redirect(`/auth/signin?callbackUrl=${encodeURIComponent(`/p/${projectId}/edit`)}`);
+  }
 
   const [{ data: project }, { data: clients }] = await Promise.all([
-    supabase
-      .from("DeliveryProject")
-      .select("id, title, description, price, currency, paymentStatus, freelancerId, clientId, asset:Asset(previewUrl, previewVideoUrl, demoIndexUrl, originalFileUrl)")
-      .eq("id", projectId)
-      .maybeSingle(),
+    fetchDeliveryProjectById(
+      projectId,
+      "id, title, description, price, currency, paymentStatus, freelancerId, clientId, checkoutStartedAt, asset:Asset(previewUrl, previewVideoUrl, demoIndexUrl, originalFileUrl)",
+      "id, title, description, price, currency, paymentStatus, freelancerId, clientId, asset:Asset(previewUrl, previewVideoUrl, demoIndexUrl, originalFileUrl)",
+    ),
     supabase.from("User").select("id, name, email").neq("id", currentUserId).order("email", { ascending: true }),
   ]);
 
@@ -45,6 +49,13 @@ export default async function EditVaultPage({ params }: Props) {
         <p className="mt-2 text-sm text-slate-600">
           Unpaid deliveries can be changed completely. Paid vaults stay locked.
         </p>
+        <div className="mt-4">
+          <DeleteVaultButton
+            projectId={project.id}
+            paymentStatus={project.paymentStatus}
+            checkoutStartedAt={project.checkoutStartedAt}
+          />
+        </div>
         <div className="mt-6">
           <EditVaultForm
             clients={clients ?? []}

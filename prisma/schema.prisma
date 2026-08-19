@@ -39,6 +39,7 @@ model DeliveryProject {
   clientId               String
   createdAt              DateTime      @default(now())
   paidAt                 DateTime?
+  checkoutStartedAt      DateTime?
   freelancer             User          @relation("FreelancerProjects", fields: [freelancerId], references: [id])
   client                 User          @relation("ClientProjects", fields: [clientId], references: [id])
   asset                  Asset?
@@ -53,7 +54,7 @@ model Asset {
   demoIndexUrl    String?
   originalFileUrl String
   isUnlocked      Boolean         @default(false)
-  project         DeliveryProject @relation(fields: [projectId], references: [id])
+  project         DeliveryProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
 }
 
 model ChatMessage {

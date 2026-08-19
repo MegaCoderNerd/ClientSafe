@@ -5,12 +5,14 @@ import { readFile } from "fs/promises";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
-import { extractDemoZip } from "@/lib/extract-demo";
-import { resolveDeliverableFile } from "@/lib/file-delivery";
+import { extractDemoZip, removeDemoStorage } from "@/lib/extract-demo";
+import { fetchDeliveryProjectById, isMissingColumnError } from "@/lib/delivery-project";
+import { removeOwnedUpload, resolveDeliverableFile } from "@/lib/file-delivery";
 import { getPlatformFeePercent, splitVaultPrice } from "@/lib/paypal";
 import { createDemoPreviewLink } from "@/lib/preview";
 import { STOCK_ASSETS } from "@/lib/stock-assets";
 import { supabase } from "@/lib/supabase";
+import { checkoutDeleteCutoffIso, isCheckoutGraceActive } from "@/lib/vault-delete";
 
 type ActionResult = { ok: true; projectId: string } | { ok: false; error: string };
 
@@ -227,11 +229,11 @@ export async function updateProject(formData: FormData): Promise<ActionResult> {
     return { ok: false, error: "Choose a client other than yourself." };
   }
 
-  const { data: project, error: projectError } = await supabase
-    .from("DeliveryProject")
-    .select("id, freelancerId, clientId, paymentStatus, price, asset:Asset(id, previewUrl, previewVideoUrl, demoIndexUrl, originalFileUrl)")
-    .eq("id", projectId)
-    .maybeSingle();
+  const { data: project, error: projectError } = await fetchDeliveryProjectById(
+    projectId,
+    "id, freelancerId, clientId, paymentStatus, price, checkoutStartedAt, asset:Asset(id, previewUrl, previewVideoUrl, demoIndexUrl, originalFileUrl)",
+    "id, freelancerId, clientId, paymentStatus, price, asset:Asset(id, previewUrl, previewVideoUrl, demoIndexUrl, originalFileUrl)",
+  );
 
   if (projectError || !project) {
     return { ok: false, error: "Vault not found." };
@@ -243,6 +245,18 @@ export async function updateProject(formData: FormData): Promise<ActionResult> {
 
   if (project.paymentStatus !== "PENDING") {
     return { ok: false, error: "Paid vaults cannot be edited." };
+  }
+
+  if (
+    isCheckoutGraceActive({
+      paymentStatus: project.paymentStatus,
+      checkoutStartedAt: project.checkoutStartedAt,
+    })
+  ) {
+    return {
+      ok: false,
+      error: "This vault cannot be edited while the client is in checkout. Try again after the payment window ends.",
+    };
   }
 
   const asset = Array.isArray(project.asset) ? project.asset[0] : project.asset;
@@ -281,25 +295,62 @@ export async function updateProject(formData: FormData): Promise<ActionResult> {
     }
   }
 
-  const { error: updateError } = await supabase
-    .from("DeliveryProject")
-    .update({
-      title,
-      description,
-      currency,
-      price,
-      clientId: client.id,
-      platformFeePercent: fees.platformFeePercent,
-      platformFeeAmount: fees.platformFeeAmount,
-      freelancerPayoutAmount: fees.freelancerPayoutAmount,
-      ...(clientOrPriceChanged ? { paypalOrderId: null } : {}),
-    })
-    .eq("id", project.id)
-    .eq("paymentStatus", "PENDING");
+  const baseUpdate = {
+    title,
+    description,
+    currency,
+    price,
+    clientId: client.id,
+    platformFeePercent: fees.platformFeePercent,
+    platformFeeAmount: fees.platformFeeAmount,
+    freelancerPayoutAmount: fees.freelancerPayoutAmount,
+  };
+  const payloads = clientOrPriceChanged
+    ? [
+        { ...baseUpdate, paypalOrderId: null, checkoutStartedAt: null },
+        { ...baseUpdate, paypalOrderId: null },
+      ]
+    : [baseUpdate];
+
+  let updated: { id: string } | null = null;
+  let updateError = null;
+  for (const payload of payloads) {
+    const result = await supabase
+      .from("DeliveryProject")
+      .update(payload)
+      .eq("id", project.id)
+      .eq("paymentStatus", "PENDING")
+      .select("id")
+      .maybeSingle();
+    if (result.error && isMissingColumnError(result.error) && "checkoutStartedAt" in payload) {
+      continue;
+    }
+    updateError = result.error;
+    updated = result.data;
+    break;
+  }
 
   if (updateError) {
     console.error("[updateProject] project update failed", updateError);
     return { ok: false, error: publicError(updateError, "Failed to update vault") };
+  }
+
+  if (!updated) {
+    const { data: latest } = await supabase
+      .from("DeliveryProject")
+      .select("paymentStatus")
+      .eq("id", project.id)
+      .maybeSingle();
+    if (!latest) {
+      return { ok: false, error: "Vault not found." };
+    }
+    if (latest.paymentStatus !== "PENDING") {
+      return { ok: false, error: "Paid vaults cannot be edited." };
+    }
+    return {
+      ok: false,
+      error: "This vault cannot be edited while the client is in checkout. Try again after the payment window ends.",
+    };
   }
 
   const { error: assetError } = await supabase
@@ -320,5 +371,173 @@ export async function updateProject(formData: FormData): Promise<ActionResult> {
   revalidatePath("/");
   revalidatePath(`/p/${project.id}`);
   revalidatePath(`/p/${project.id}/edit`);
+  return { ok: true, projectId: project.id };
+}
+
+type VaultAssetRow = {
+  id: string;
+  previewUrl?: string | null;
+  previewVideoUrl?: string | null;
+  originalFileUrl?: string | null;
+};
+
+async function cleanupDeletedVaultFiles(asset: VaultAssetRow) {
+  await Promise.all([
+    removeOwnedUpload(asset.previewUrl),
+    removeOwnedUpload(asset.previewVideoUrl),
+    removeOwnedUpload(asset.originalFileUrl),
+    removeDemoStorage(asset.id),
+  ]);
+}
+
+function isSafePayPalOrderId(value: string) {
+  return /^[A-Za-z0-9_-]+$/.test(value);
+}
+
+async function deleteUnpaidVaultRow(options: {
+  projectId: string;
+  freelancerId: string;
+  expectedPayPalOrderId: string | null;
+  useCheckoutGraceFilter: boolean;
+}) {
+  const cutoff = checkoutDeleteCutoffIso();
+  let query = supabase
+    .from("DeliveryProject")
+    .delete()
+    .eq("id", options.projectId)
+    .eq("freelancerId", options.freelancerId)
+    .eq("paymentStatus", "PENDING");
+
+  if (options.useCheckoutGraceFilter) {
+    query = query.or(`checkoutStartedAt.is.null,checkoutStartedAt.lt."${cutoff}"`);
+  }
+
+  if (options.expectedPayPalOrderId) {
+    if (isSafePayPalOrderId(options.expectedPayPalOrderId)) {
+      query = query.eq("paypalOrderId", options.expectedPayPalOrderId);
+    }
+  } else {
+    query = query.is("paypalOrderId", null);
+  }
+
+  return query.select("id").maybeSingle();
+}
+
+export async function deleteProject(formData: FormData): Promise<ActionResult> {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) {
+    return { ok: false, error: "Authentication required to delete a vault." };
+  }
+
+  const projectId = String(formData.get("projectId") ?? "").trim();
+  if (!projectId) {
+    return { ok: false, error: "Vault id is required." };
+  }
+
+  const freelancerId = await resolveUserId(session.user);
+  if (!freelancerId) {
+    return { ok: false, error: "Your account was not found. Sign out and sign in again." };
+  }
+
+  const { data: project, error: projectError } = await fetchDeliveryProjectById(
+    projectId,
+    "id, freelancerId, paymentStatus, paypalOrderId, checkoutStartedAt, asset:Asset(id, previewUrl, previewVideoUrl, originalFileUrl)",
+    "id, freelancerId, paymentStatus, paypalOrderId, asset:Asset(id, previewUrl, previewVideoUrl, originalFileUrl)",
+  );
+
+  if (projectError || !project) {
+    return { ok: false, error: "Vault not found." };
+  }
+
+  if (project.freelancerId !== freelancerId) {
+    return { ok: false, error: "Only the vault owner can delete this delivery." };
+  }
+
+  if (project.paymentStatus !== "PENDING") {
+    return { ok: false, error: "Paid vaults cannot be deleted." };
+  }
+
+  const expectedPayPalOrderId = project.paypalOrderId ?? null;
+
+  if (
+    isCheckoutGraceActive({
+      paymentStatus: project.paymentStatus,
+      checkoutStartedAt: project.checkoutStartedAt,
+    })
+  ) {
+    return {
+      ok: false,
+      error: "This vault cannot be deleted while the client is in checkout. Try again after the payment window ends.",
+    };
+  }
+
+  const asset = Array.isArray(project.asset) ? project.asset[0] : project.asset;
+
+  async function attemptDelete(useCheckoutGraceFilter: boolean) {
+    let result = await deleteUnpaidVaultRow({
+      projectId: project.id,
+      freelancerId,
+      expectedPayPalOrderId,
+      useCheckoutGraceFilter,
+    });
+    if (result.error && isMissingColumnError(result.error) && useCheckoutGraceFilter) {
+      result = await deleteUnpaidVaultRow({
+        projectId: project.id,
+        freelancerId,
+        expectedPayPalOrderId,
+        useCheckoutGraceFilter: false,
+      });
+    }
+    return result;
+  }
+
+  let deleted;
+  try {
+    let result = await attemptDelete(true);
+    if (result.error?.code === "23503" && asset?.id) {
+      const { error: assetDeleteError } = await supabase.from("Asset").delete().eq("id", asset.id).eq("projectId", project.id);
+      if (assetDeleteError) {
+        return { ok: false, error: publicError(assetDeleteError, "Failed to delete vault files") };
+      }
+      result = await attemptDelete(true);
+    }
+    deleted = result.data;
+    if (result.error) {
+      console.error("[deleteProject] delete failed", result.error);
+      if (result.error.code === "23503") {
+        return {
+          ok: false,
+          error: "Vault could not be deleted because related records are still locked. Apply the latest database migration and retry.",
+        };
+      }
+      return { ok: false, error: publicError(result.error, "Failed to delete vault") };
+    }
+  } catch {
+    return { ok: false, error: "Could not delete this vault." };
+  }
+
+  if (!deleted) {
+    const { data: latest } = await supabase
+      .from("DeliveryProject")
+      .select("paymentStatus")
+      .eq("id", project.id)
+      .maybeSingle();
+
+    if (!latest) {
+      revalidatePath("/");
+      return { ok: true, projectId: project.id };
+    }
+    if (latest.paymentStatus !== "PENDING") {
+      return { ok: false, error: "Paid vaults cannot be deleted." };
+    }
+    return { ok: false, error: "This vault cannot be deleted while the client is in checkout." };
+  }
+
+  if (asset?.id) {
+    await cleanupDeletedVaultFiles(asset).catch(() => {});
+  }
+
+  revalidatePath("/");
+  revalidatePath(`/p/${project.id}`);
   return { ok: true, projectId: project.id };
 }

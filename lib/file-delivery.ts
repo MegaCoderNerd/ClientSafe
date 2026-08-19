@@ -1,5 +1,5 @@
 import { createReadStream } from "fs";
-import { stat } from "fs/promises";
+import { stat, unlink } from "fs/promises";
 import path from "path";
 import { Readable } from "stream";
 import { NextResponse } from "next/server";
@@ -44,6 +44,14 @@ export function resolveDeliverableFile(originalFileUrl: string) {
   }
 
   return null;
+}
+
+export async function removeOwnedUpload(url?: string | null) {
+  if (!url || url.startsWith("/stock/")) return;
+  if (!url.startsWith("/uploads/") && !url.startsWith("/storage-uploads/")) return;
+  const localFile = resolveDeliverableFile(url);
+  if (!localFile) return;
+  await unlink(localFile).catch(() => {});
 }
 
 function contentDisposition(fileName: string) {

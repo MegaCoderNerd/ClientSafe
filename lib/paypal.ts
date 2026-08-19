@@ -74,6 +74,7 @@ async function paypalFetch(path: string, init: RequestInit = {}) {
   const response = await fetch(`${getPayPalApiBase()}${path}`, {
     ...init,
     cache: "no-store",
+    signal: init.signal ?? AbortSignal.timeout(8_000),
     headers: {
       "Content-Type": "application/json",
       ...(init.headers ?? {}),
@@ -91,6 +92,7 @@ export async function getPayPalAccessToken() {
   const response = await fetch(`${getPayPalApiBase()}/v1/oauth2/token`, {
     method: "POST",
     cache: "no-store",
+    signal: AbortSignal.timeout(8_000),
     headers: {
       Authorization: `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString("base64")}`,
       "Content-Type": "application/x-www-form-urlencoded",
@@ -113,7 +115,53 @@ export async function getPayPalAccessToken() {
 export type PayPalLink = { href: string; rel: string; method?: string };
 
 const REUSABLE_ORDER_STATUSES = new Set(["CREATED", "SAVED", "APPROVED", "PAYER_ACTION_REQUIRED"]);
-const PAYPAL_ORDER_TTL_MS = 3 * 60 * 60 * 1000 - 60_000;
+const RESUMABLE_APPROVE_STATUSES = new Set(["CREATED", "PAYER_ACTION_REQUIRED"]);
+const ABANDON_CAPTURE_ISSUES = new Set([
+  "INSTRUMENT_DECLINED",
+  "PAYER_CANNOT_PAY",
+  "TRANSACTION_REFUSED",
+  "PAYMENT_DENIED",
+  "CARD_CLOSED",
+  "CARD_EXPIRED",
+  "PAYER_ACCOUNT_LOCKED_OR_CLOSED",
+]);
+export const PAYPAL_ORDER_TTL_MS = 3 * 60 * 60 * 1000 - 60_000;
+
+export class PayPalApiError extends Error {
+  issue: string | null;
+  debugId: string | null;
+  httpStatus: number;
+
+  constructor(
+    message: string,
+    options?: { issue?: string | null; debugId?: string | null; httpStatus?: number },
+  ) {
+    super(message);
+    this.name = "PayPalApiError";
+    this.issue = options?.issue ?? null;
+    this.debugId = options?.debugId ?? null;
+    this.httpStatus = options?.httpStatus ?? 400;
+  }
+}
+
+export function shouldAbandonPayPalOrder(issue?: string | null) {
+  return Boolean(issue && ABANDON_CAPTURE_ISSUES.has(issue));
+}
+
+export function paypalCaptureUserMessage(issue?: string | null, fallback?: string | null) {
+  if (issue === "INSTRUMENT_DECLINED") {
+    return getPayPalMode() === "sandbox"
+      ? "PayPal declined this card. Random or Stripe-style numbers (like 4242…) do not work here. Use PayPal’s test Visa 4111111111111111, expiry 12/2028, CVV 123, or the sandbox test payment button."
+      : "That card or funding source was declined. Choose a different card or PayPal balance, then pay again.";
+  }
+  if (issue === "PAYER_CANNOT_PAY") {
+    return "This PayPal account cannot complete this payment. Try a different buyer account or card.";
+  }
+  if (issue === "TRANSACTION_REFUSED" || issue === "PAYMENT_DENIED") {
+    return "PayPal refused this payment. Start checkout again and choose a different payment method.";
+  }
+  return fallback || "PayPal could not complete this payment. Start checkout again.";
+}
 
 export type PayPalOrder = {
   id: string;
@@ -155,6 +203,7 @@ export async function createPayPalOrder(options: {
       ],
       application_context: {
         brand_name: "ClientVault",
+        landing_page: "BILLING",
         shipping_preference: "NO_SHIPPING",
         user_action: "PAY_NOW",
         return_url: options.returnUrl,
@@ -163,9 +212,80 @@ export async function createPayPalOrder(options: {
     }),
   });
 
-  const order = (await response.json()) as PayPalOrder & { message?: string };
+  const order = (await response.json()) as PayPalOrder & {
+    message?: string;
+    debug_id?: string;
+    details?: Array<{ issue?: string; description?: string }>;
+  };
   if (!response.ok || !order.id) {
-    throw new Error(order.message || "Unable to create PayPal order");
+    throw new PayPalApiError(order.details?.[0]?.description || order.message || "Unable to create PayPal order", {
+      issue: order.details?.[0]?.issue ?? null,
+      debugId: order.debug_id ?? null,
+      httpStatus: response.status,
+    });
+  }
+  return order;
+}
+
+export async function createAndCaptureSandboxTestCard(options: {
+  projectId: string;
+  title: string;
+  currency: string;
+  amountCents: number;
+}) {
+  if (getPayPalMode() !== "sandbox") {
+    throw new PayPalApiError("Sandbox test cards are only available when PAYPAL_MODE=sandbox");
+  }
+
+  const accessToken = await getPayPalAccessToken();
+  const response = await paypalFetch("/v2/checkout/orders", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      Prefer: "return=representation",
+      "PayPal-Request-Id": `sandbox-card-${options.projectId}-${Date.now()}`,
+    },
+    body: JSON.stringify({
+      intent: "CAPTURE",
+      purchase_units: [
+        {
+          custom_id: options.projectId,
+          description: options.title.slice(0, 127),
+          amount: {
+            currency_code: options.currency.toUpperCase(),
+            value: centsToPayPalValue(options.amountCents),
+          },
+        },
+      ],
+      payment_source: {
+        card: {
+          name: "Sandbox Buyer",
+          number: "4111111111111111",
+          expiry: "2028-12",
+          security_code: "123",
+          billing_address: {
+            address_line_1: "123 Townsend St",
+            admin_area_2: "San Jose",
+            admin_area_1: "CA",
+            postal_code: "95131",
+            country_code: "US",
+          },
+        },
+      },
+    }),
+  });
+
+  const order = (await response.json()) as PayPalOrder & {
+    message?: string;
+    debug_id?: string;
+    details?: Array<{ issue?: string; description?: string }>;
+  };
+  if (!response.ok || !order.id) {
+    throw new PayPalApiError(order.details?.[0]?.description || order.message || "Sandbox test card was declined", {
+      issue: order.details?.[0]?.issue ?? null,
+      debugId: order.debug_id ?? null,
+      httpStatus: response.status,
+    });
   }
   return order;
 }
@@ -181,14 +301,40 @@ export function isCompletedPayPalOrder(order: PayPalOrder) {
 }
 
 export function getReusablePayPalApproveUrl(order: PayPalOrder) {
-  if (!REUSABLE_ORDER_STATUSES.has(order.status ?? "")) return null;
-  if (order.create_time) {
-    const createdAt = Date.parse(order.create_time);
-    if (Number.isFinite(createdAt) && Date.now() - createdAt >= PAYPAL_ORDER_TTL_MS) {
-      return null;
-    }
-  }
+  const status = order.status ?? "";
+  if (!RESUMABLE_APPROVE_STATUSES.has(status) || isCompletedPayPalOrder(order)) return null;
+  if (!isActivePayPalCheckout(order)) return null;
   return getPayPalApproveUrl(order);
+}
+
+const DEAD_ORDER_STATUSES = new Set(["VOIDED", "EXPIRED", "DECLINED"]);
+
+const DELETE_BLOCK_STATUSES = new Set(["APPROVED", "PAYER_ACTION_REQUIRED"]);
+
+export function isLiveReusablePayPalCheckout(order: PayPalOrder) {
+  if (isCompletedPayPalOrder(order)) return false;
+  const status = order.status ?? "";
+  if (!DELETE_BLOCK_STATUSES.has(status)) return false;
+  if (!order.create_time) return false;
+  const createdAt = Date.parse(order.create_time);
+  if (!Number.isFinite(createdAt)) return false;
+  return Date.now() - createdAt < PAYPAL_ORDER_TTL_MS;
+}
+
+export function isActivePayPalCheckout(order: PayPalOrder) {
+  if (isCompletedPayPalOrder(order)) return true;
+  const status = order.status ?? "";
+  if (DEAD_ORDER_STATUSES.has(status)) return false;
+  if (REUSABLE_ORDER_STATUSES.has(status)) {
+    if (order.create_time) {
+      const createdAt = Date.parse(order.create_time);
+      if (Number.isFinite(createdAt) && Date.now() - createdAt >= PAYPAL_ORDER_TTL_MS) {
+        return false;
+      }
+    }
+    return true;
+  }
+  return true;
 }
 
 export async function capturePayPalOrder(orderId: string) {
@@ -202,12 +348,22 @@ export async function capturePayPalOrder(orderId: string) {
     body: "{}",
   });
 
-  const order = (await response.json()) as PayPalOrder & { message?: string; details?: Array<{ issue?: string }> };
+  const order = (await response.json()) as PayPalOrder & {
+    name?: string;
+    message?: string;
+    debug_id?: string;
+    details?: Array<{ issue?: string; description?: string }>;
+  };
   if (response.status === 422 && order.details?.some((detail) => detail.issue === "ORDER_ALREADY_CAPTURED")) {
     return getPayPalOrder(orderId);
   }
   if (!response.ok) {
-    throw new Error(order.message || "Unable to capture PayPal order");
+    const issue = order.details?.[0]?.issue ?? null;
+    throw new PayPalApiError(paypalCaptureUserMessage(issue, order.details?.[0]?.description || order.message), {
+      issue,
+      debugId: order.debug_id ?? null,
+      httpStatus: response.status,
+    });
   }
   return order;
 }
@@ -246,9 +402,9 @@ export async function verifyPayPalWebhook(options: {
   headers: Headers;
   event: unknown;
 }) {
-  const webhookId = process.env.PAYPAL_WEBHOOK_ID;
-  if (!webhookId) {
-    throw new Error("PAYPAL_WEBHOOK_ID is missing");
+  const webhookId = process.env.PAYPAL_WEBHOOK_ID?.trim();
+  if (!webhookId || /^https?:\/\//i.test(webhookId)) {
+    throw new Error("PAYPAL_WEBHOOK_ID must be the webhook id from the PayPal dashboard, not a URL");
   }
 
   const authAlgo = options.headers.get("paypal-auth-algo");

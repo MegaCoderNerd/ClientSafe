@@ -24,7 +24,7 @@ export async function GET(request: Request, context: RouteContext) {
   const assetId = (await context.params).assetId;
   const { data: asset, error } = await supabase
     .from("Asset")
-    .select("id, originalFileUrl, isUnlocked, project:DeliveryProject(freelancerId, paymentStatus)")
+    .select("id, originalFileUrl, isUnlocked, project:DeliveryProject(freelancerId, clientId, paymentStatus)")
     .eq("id", assetId)
     .single();
 
@@ -33,10 +33,15 @@ export async function GET(request: Request, context: RouteContext) {
   }
 
   const project = Array.isArray(asset.project) ? asset.project[0] : asset.project;
+  if (!project) {
+    return NextResponse.json({ error: "Asset not found" }, { status: 404 });
+  }
   const isVaultOwner = project.freelancerId === session.user.id;
+  const isAssignedClient = project.clientId === session.user.id;
   const isPaid = project.paymentStatus === "COMPLETED";
+  const allowed = isVaultOwner || (isPaid && isAssignedClient);
 
-  if (!isVaultOwner && !isPaid) {
+  if (!allowed) {
     return NextResponse.json({ error: "Unauthorized - payment required" }, { status: 403 });
   }
 

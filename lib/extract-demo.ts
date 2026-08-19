@@ -1,5 +1,5 @@
 import { unzipSync } from "fflate";
-import { mkdir, writeFile } from "fs/promises";
+import { mkdir, rm, writeFile } from "fs/promises";
 import path from "path";
 
 const DEMO_ROOT = path.resolve(process.cwd(), "storage", "demos");
@@ -56,6 +56,10 @@ export function demoStorageRoot(assetId: string) {
   const safeId = assetId.replace(/[^a-zA-Z0-9_-]/g, "");
   if (!safeId) throw new Error("Invalid asset id");
   return path.resolve(DEMO_ROOT, safeId);
+}
+
+export async function removeDemoStorage(assetId: string) {
+  await rm(demoStorageRoot(assetId), { recursive: true, force: true });
 }
 
 export async function extractDemoZip(assetId: string, zipBytes: Uint8Array) {

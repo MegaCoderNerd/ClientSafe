@@ -40,6 +40,9 @@ export async function GET(_request: Request, context: RouteContext) {
     }
 
     const project = Array.isArray(asset.project) ? asset.project[0] : asset.project;
+    if (!project) {
+      return NextResponse.json({ error: "Asset not found" }, { status: 404 });
+    }
     const allowed = session.user.id === project.freelancerId || session.user.id === project.clientId;
     if (!allowed) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });

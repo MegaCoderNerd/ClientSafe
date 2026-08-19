@@ -137,7 +137,7 @@ export function Chat({ projectId, currentUserId, otherUserName, className = "" }
   };
 
   return (
-      <div className={`flex h-full min-h-[28rem] flex-col gap-4 rounded-xl border bg-white p-4 shadow-sm ${className}`}>
+      <div className={`flex h-full min-h-[20rem] flex-col gap-4 rounded-xl border bg-white p-4 shadow-sm sm:min-h-[28rem] ${className}`}>
         <h2 className="text-lg font-semibold">Chat with {otherUserName}</h2>
 
         <div

@@ -1,5 +1,6 @@
 "use client";
 
+import { DeleteVaultButton } from "@/components/delete-vault-button";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
@@ -12,6 +13,7 @@ export type OverviewProject = {
   freelancerPayoutAmount: number | null;
   platformFeeAmount: number | null;
   paidAt: string | null;
+  checkoutStartedAt: string | null;
   clientName: string;
   clientEmail: string;
 };
@@ -119,9 +121,16 @@ export function ProjectOverview({ projects }: { projects: OverviewProject[] }) {
                     View
                   </Link>
                   {unpaid ? (
-                    <Link href={`/p/${project.id}/edit`} className="rounded-md border px-3 py-1.5 text-sm hover:bg-slate-50">
-                      Edit
-                    </Link>
+                    <>
+                      <Link href={`/p/${project.id}/edit`} className="rounded-md border px-3 py-1.5 text-sm hover:bg-slate-50">
+                        Edit
+                      </Link>
+                      <DeleteVaultButton
+                        projectId={project.id}
+                        paymentStatus={project.paymentStatus}
+                        checkoutStartedAt={project.checkoutStartedAt}
+                      />
+                    </>
                   ) : null}
                 </div>
               </li>

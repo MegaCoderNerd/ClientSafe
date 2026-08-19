@@ -114,11 +114,16 @@ export async function ensureDemoWorkspace() {
   try {
     const landing = STOCK_ASSETS.find((asset) => asset.id === "landing-page");
     const brand = STOCK_ASSETS.find((asset) => asset.id === "brand-kit");
-    const { data: existingAssets } = await supabase
-      .from("Asset")
-      .select("projectId, previewUrl, demoIndexUrl")
-      .in("projectId", ["demo-locked-project", "demo-unlocked-project"]);
+    const [{ data: existingProjects }, { data: existingAssets }] = await Promise.all([
+      supabase.from("DeliveryProject").select("id").in("id", ["demo-locked-project", "demo-unlocked-project"]),
+      supabase
+        .from("Asset")
+        .select("projectId, previewUrl, demoIndexUrl")
+        .in("projectId", ["demo-locked-project", "demo-unlocked-project"]),
+    ]);
 
+    const hasLocked = Boolean(existingProjects?.some((project) => project.id === "demo-locked-project"));
+    const hasUnlocked = Boolean(existingProjects?.some((project) => project.id === "demo-unlocked-project"));
     const lockedReady = existingAssets?.some(
       (asset) =>
         asset.projectId === "demo-locked-project" &&
@@ -128,30 +133,57 @@ export async function ensureDemoWorkspace() {
     const unlockedReady = existingAssets?.some(
       (asset) => asset.projectId === "demo-unlocked-project" && asset.previewUrl === brand?.previewUrl,
     );
+
     if (lockedReady && unlockedReady) return;
 
     const freelancerId = await ensureUser(DEMO_USERS[0]);
     const clientId = await ensureUser(DEMO_USERS[1]);
 
-    await ensureProject({
-      id: "demo-locked-project",
-      assetId: "demo-locked-asset",
-      stockId: "landing-page",
-      paymentStatus: "PENDING",
-      isUnlocked: false,
-      freelancerId,
-      clientId,
-    });
+    if (!hasLocked && !hasUnlocked) {
+      await ensureProject({
+        id: "demo-locked-project",
+        assetId: "demo-locked-asset",
+        stockId: "landing-page",
+        paymentStatus: "PENDING",
+        isUnlocked: false,
+        freelancerId,
+        clientId,
+      });
+      await ensureProject({
+        id: "demo-unlocked-project",
+        assetId: "demo-unlocked-asset",
+        stockId: "brand-kit",
+        paymentStatus: "COMPLETED",
+        isUnlocked: true,
+        freelancerId,
+        clientId,
+      });
+      return;
+    }
 
-    await ensureProject({
-      id: "demo-unlocked-project",
-      assetId: "demo-unlocked-asset",
-      stockId: "brand-kit",
-      paymentStatus: "COMPLETED",
-      isUnlocked: true,
-      freelancerId,
-      clientId,
-    });
+    if (hasLocked && !lockedReady) {
+      await ensureProject({
+        id: "demo-locked-project",
+        assetId: "demo-locked-asset",
+        stockId: "landing-page",
+        paymentStatus: "PENDING",
+        isUnlocked: false,
+        freelancerId,
+        clientId,
+      });
+    }
+
+    if (hasUnlocked && !unlockedReady) {
+      await ensureProject({
+        id: "demo-unlocked-project",
+        assetId: "demo-unlocked-asset",
+        stockId: "brand-kit",
+        paymentStatus: "COMPLETED",
+        isUnlocked: true,
+        freelancerId,
+        clientId,
+      });
+    }
   } catch (error) {
     console.error("[demo] workspace seed failed", error);
   }

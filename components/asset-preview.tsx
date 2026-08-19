@@ -7,6 +7,7 @@ type AssetPreviewProps = {
   sizes: string;
   preload?: boolean;
   showPlayBadge?: boolean;
+  fit?: "cover" | "contain";
 };
 
 function isSvg(src: string) {
@@ -20,11 +21,14 @@ export function AssetPreview({
   sizes,
   preload = false,
   showPlayBadge = false,
+  fit = "cover",
 }: AssetPreviewProps) {
+  const fitClass = fit === "contain" ? "object-contain" : "object-cover";
+
   if (videoSrc && !showPlayBadge) {
     return (
       <video
-        className="h-full w-full object-cover"
+        className={`h-full w-full ${fitClass} bg-slate-950`}
         src={videoSrc}
         poster={imageSrc || undefined}
         controls
@@ -51,9 +55,9 @@ export function AssetPreview({
     <>
       {isSvg(imageSrc) ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={imageSrc} alt={alt} className="h-full w-full object-cover" />
+        <img src={imageSrc} alt={alt} className={`h-full w-full ${fitClass}`} />
       ) : (
-        <AssetImage src={imageSrc} alt={alt} sizes={sizes} preload={preload} />
+        <AssetImage src={imageSrc} alt={alt} sizes={sizes} preload={preload} className={fitClass} />
       )}
       {showPlayBadge ? (
         <span className="pointer-events-none absolute inset-0 flex items-center justify-center">

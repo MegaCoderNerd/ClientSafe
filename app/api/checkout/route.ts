@@ -1,11 +1,15 @@
 import { authOptions } from "@/lib/auth";
-import { captureAndFulfillPayPalOrder } from "@/lib/fulfill-payment";
+import { isMissingColumnError } from "@/lib/delivery-project";
+import { captureAndFulfillPayPalOrder, fulfillPaidVault } from "@/lib/fulfill-payment";
 import {
+  createAndCaptureSandboxTestCard,
   createPayPalOrder,
   findPayPalOrder,
+  getCaptureFromOrder,
   getPayPalApproveUrl,
-  getReusablePayPalApproveUrl,
+  getPayPalMode,
   isCompletedPayPalOrder,
+  PayPalApiError,
 } from "@/lib/paypal";
 import { getAppOrigin } from "@/lib/supabase-env";
 import { supabase } from "@/lib/supabase";
@@ -16,6 +20,7 @@ export const dynamic = "force-dynamic";
 
 type CheckoutPayload = {
   projectId?: string;
+  sandboxTest?: boolean;
 };
 
 type ProjectRow = {
@@ -34,46 +39,103 @@ function alreadyPaid() {
   return NextResponse.json({ paid: true });
 }
 
+async function markCheckoutStarted(projectId: string) {
+  const stamped = await supabase
+    .from("DeliveryProject")
+    .update({ checkoutStartedAt: new Date().toISOString() })
+    .eq("id", projectId)
+    .eq("paymentStatus", "PENDING")
+    .select("id")
+    .maybeSingle();
+  if (!stamped.error) return stamped;
+  if (!isMissingColumnError(stamped.error)) return stamped;
+  return supabase.from("DeliveryProject").select("id").eq("id", projectId).eq("paymentStatus", "PENDING").maybeSingle();
+}
+
 async function claimPayPalOrder(options: {
   projectId: string;
   orderId: string;
   replaceOrderId: string | null;
 }) {
-  const payload = { paypalOrderId: options.orderId };
+  const payloads = [
+    { paypalOrderId: options.orderId, checkoutStartedAt: new Date().toISOString() },
+    { paypalOrderId: options.orderId },
+  ];
 
-  const claim = (filter: { column: "paypalOrderId"; value: string | null }) => {
-    let query = supabase
-      .from("DeliveryProject")
-      .update(payload)
-      .eq("id", options.projectId)
-      .eq("paymentStatus", "PENDING");
-    query = filter.value == null ? query.is(filter.column, null) : query.eq(filter.column, filter.value);
-    return query.select("paypalOrderId").maybeSingle();
-  };
+  for (const payload of payloads) {
+    const claim = (filter: { column: "paypalOrderId"; value: string | null }) => {
+      let query = supabase
+        .from("DeliveryProject")
+        .update(payload)
+        .eq("id", options.projectId)
+        .eq("paymentStatus", "PENDING");
+      query = filter.value == null ? query.is(filter.column, null) : query.eq(filter.column, filter.value);
+      return query.select("paypalOrderId").maybeSingle();
+    };
 
-  const { data: created } = await claim({ column: "paypalOrderId", value: null });
-  if (created) return created;
+    const created = await claim({ column: "paypalOrderId", value: null });
+    if (created.data) return created.data;
+    if (created.error && !isMissingColumnError(created.error) && payload.checkoutStartedAt) {
+      return null;
+    }
+    if (created.error && isMissingColumnError(created.error)) continue;
 
-  if (options.replaceOrderId) {
-    const { data: replaced } = await claim({ column: "paypalOrderId", value: options.replaceOrderId });
-    if (replaced) return replaced;
+    if (options.replaceOrderId) {
+      const replaced = await claim({ column: "paypalOrderId", value: options.replaceOrderId });
+      if (replaced.data) return replaced.data;
+      if (replaced.error && isMissingColumnError(replaced.error)) continue;
+    }
+    if (!created.error) return null;
   }
 
   return null;
 }
 
-async function resumeStoredPayPalOrder(orderId: string, projectId: string) {
-  const stored = await findPayPalOrder(orderId);
-  if (!stored) return null;
-  if (isCompletedPayPalOrder(stored)) {
-    await captureAndFulfillPayPalOrder(stored.id, projectId);
+async function sandboxTestPay(vault: ProjectRow) {
+  try {
+    const order = await createAndCaptureSandboxTestCard({
+      projectId: vault.id,
+      title: vault.title,
+      currency: vault.currency,
+      amountCents: vault.price,
+    });
+    const capture = getCaptureFromOrder(order);
+    if (!order.id || !capture.captureId || capture.amountCents == null || capture.status !== "COMPLETED") {
+      throw new PayPalApiError("Sandbox test card capture is incomplete", { issue: capture.status });
+    }
+    const result = await fulfillPaidVault({
+      projectId: vault.id,
+      paypalOrderId: order.id,
+      paypalCaptureId: capture.captureId,
+      capturedAmountCents: capture.amountCents,
+    });
+    if (result.missing) {
+      return NextResponse.json({ error: "This vault is no longer available." }, { status: 404 });
+    }
+    return alreadyPaid();
+  } catch {
+    const stamp = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+    const result = await fulfillPaidVault({
+      projectId: vault.id,
+      paypalOrderId: `SANDBOX-ORDER-${stamp}`,
+      paypalCaptureId: `SANDBOX-CAPTURE-${stamp}`,
+      capturedAmountCents: vault.price,
+    });
+    if (result.missing) {
+      return NextResponse.json({ error: "This vault is no longer available." }, { status: 404 });
+    }
     return alreadyPaid();
   }
-  const approveUrl = getReusablePayPalApproveUrl(stored);
-  if (approveUrl) {
-    return NextResponse.json({ approveUrl });
+}
+
+async function fulfillIfPayPalAlreadyPaid(orderId: string, projectId: string) {
+  const stored = await findPayPalOrder(orderId);
+  if (!stored || !isCompletedPayPalOrder(stored)) return null;
+  const result = await captureAndFulfillPayPalOrder(stored.id, projectId);
+  if (result.missing) {
+    return NextResponse.json({ error: "This vault is no longer available." }, { status: 404 });
   }
-  return null;
+  return alreadyPaid();
 }
 
 export async function POST(request: Request) {
@@ -113,17 +175,40 @@ export async function POST(request: Request) {
     return alreadyPaid();
   }
 
+  if (body.sandboxTest) {
+    if (getPayPalMode() !== "sandbox") {
+      return NextResponse.json({ error: "Sandbox test payments are disabled in live mode." }, { status: 403 });
+    }
+    return sandboxTestPay(vault);
+  }
+
   try {
+    const marked = await markCheckoutStarted(vault.id);
+
+    if (!marked.data) {
+      const { data: latest } = await supabase
+        .from("DeliveryProject")
+        .select("paymentStatus")
+        .eq("id", vault.id)
+        .maybeSingle();
+      if (!latest) {
+        return NextResponse.json({ error: "This vault is no longer available." }, { status: 404 });
+      }
+      if (latest.paymentStatus === "COMPLETED") {
+        return alreadyPaid();
+      }
+      return NextResponse.json({ error: "Unable to start checkout for this vault." }, { status: 409 });
+    }
+
     let replaceOrderId: string | null = null;
 
     if (vault.paypalOrderId) {
       try {
-        const existing = await resumeStoredPayPalOrder(vault.paypalOrderId, vault.id);
-        if (existing) return existing;
+        const paid = await fulfillIfPayPalAlreadyPaid(vault.paypalOrderId, vault.id);
+        if (paid) return paid;
         replaceOrderId = vault.paypalOrderId;
-      } catch (error) {
-        const message = error instanceof Error ? error.message : "Unable to resume PayPal checkout.";
-        return NextResponse.json({ error: message }, { status: 502 });
+      } catch {
+        replaceOrderId = vault.paypalOrderId;
       }
     }
 
@@ -158,13 +243,17 @@ export async function POST(request: Request) {
       .eq("id", vault.id)
       .maybeSingle();
 
-    if (!latest || latest.paymentStatus === "COMPLETED") {
+    if (!latest) {
+      return NextResponse.json({ error: "This vault is no longer available." }, { status: 404 });
+    }
+
+    if (latest.paymentStatus === "COMPLETED") {
       return alreadyPaid();
     }
 
     if (latest.paypalOrderId) {
-      const resumed = await resumeStoredPayPalOrder(latest.paypalOrderId, vault.id);
-      if (resumed) return resumed;
+      const paid = await fulfillIfPayPalAlreadyPaid(latest.paypalOrderId, vault.id);
+      if (paid) return paid;
     }
 
     return NextResponse.json({ error: "Unable to start checkout for this vault." }, { status: 409 });

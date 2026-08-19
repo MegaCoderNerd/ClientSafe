@@ -177,12 +177,14 @@ export const authOptions: NextAuthOptions = {
     jwt({ token, user }) {
       if (user) {
         token.sub = user.id;
+        token.id = user.id;
       }
       return token;
     },
     session({ session, token }) {
-      if (session.user && token.sub) {
-        session.user.id = token.sub;
+      if (session.user) {
+        const userId = token.id ?? token.sub;
+        if (userId) session.user.id = userId;
       }
       return session;
     },

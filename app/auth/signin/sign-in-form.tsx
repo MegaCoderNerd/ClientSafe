@@ -19,10 +19,12 @@ export function SignInForm({
   verified = false,
   reset = false,
   initialError = null,
+  callbackUrl = "/",
 }: {
   verified?: boolean;
   reset?: boolean;
   initialError?: string | null;
+  callbackUrl?: string;
 }) {
   const router = useRouter();
   const [email, setEmail] = useState("");
@@ -51,7 +53,7 @@ export function SignInForm({
 
     if (!res?.error) {
       setLoading(false);
-      router.push("/");
+      router.push(callbackUrl || "/");
       router.refresh();
       return;
     }
