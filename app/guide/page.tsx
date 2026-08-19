@@ -1,23 +1,24 @@
 import Link from 'next/link';
+import { Card } from '@/components/ui/card';
 
 export default function GuidePage() {
   return (
-    <main className="mx-auto max-w-3xl p-8 pb-16">
-      <Link href="/" className="inline-flex items-center text-blue-600 hover:text-blue-700 mb-6">
+    <div className="mx-auto max-w-3xl p-8 pb-16">
+      <Link href="/dashboard" className="mb-6 inline-flex items-center text-accent hover:text-accent-hover">
         <span className="mr-2">←</span> Back to Dashboard
       </Link>
-      <h1 className="text-4xl font-bold mb-6">📖 How to Use ClientVault</h1>
+      <h1 className="mb-6 font-display text-4xl font-semibold">How to Use ClientVault</h1>
 
       <div className="space-y-8">
         {/* Freelancer Section */}
-        <section className="rounded-lg border bg-white p-6">
-          <h2 className="text-2xl font-bold mb-4 text-blue-600">For Freelancers 🎨</h2>
+        <Card className="p-6">
+          <h2 className="mb-4 text-2xl font-bold text-accent">For Freelancers</h2>
           
           <div className="space-y-4">
             <div>
               <h3 className="text-lg font-semibold mb-2">1. Create a Vault</h3>
               <p className="text-slate-600">
-                Go to the home page and fill in the "Create New Vault" form. Select a client, set the price, 
+                Open the Create tab on your dashboard and fill in the "Create New Vault" form. Enter the client email, set the price, 
                 add a title and description, and provide URLs for both the watermarked preview and original file.
               </p>
             </div>
@@ -39,18 +40,18 @@ export default function GuidePage() {
               </p>
             </div>
           </div>
-        </section>
+        </Card>
 
         {/* Client Section */}
-        <section className="rounded-lg border bg-white p-6">
-          <h2 className="text-2xl font-bold mb-4 text-green-600">For Clients 💼</h2>
+        <Card className="p-6">
+          <h2 className="mb-4 text-2xl font-bold text-emerald-600">For Clients</h2>
           
           <div className="space-y-4">
             <div>
               <h3 className="text-lg font-semibold mb-2">1. Receive an Invitation</h3>
               <p className="text-slate-600">
                 A freelancer will create a vault and invite you as a client. You'll see it in the 
-                "Vaults Shared With You" section on your home page.
+                "Vaults Shared With You" tab on your dashboard.
               </p>
             </div>
 
@@ -79,11 +80,11 @@ export default function GuidePage() {
               </p>
             </div>
           </div>
-        </section>
+        </Card>
 
         {/* Key Features */}
-        <section className="rounded-lg border bg-white p-6">
-          <h2 className="text-2xl font-bold mb-4">✨ Key Features</h2>
+        <Card className="p-6">
+          <h2 className="mb-4 text-2xl font-bold">Key Features</h2>
           
           <ul className="space-y-3">
             <li className="flex gap-3">
@@ -115,11 +116,11 @@ export default function GuidePage() {
               </div>
             </li>
           </ul>
-        </section>
+        </Card>
 
         {/* FAQ */}
-        <section className="rounded-lg border bg-white p-6">
-          <h2 className="text-2xl font-bold mb-4">❓ FAQs</h2>
+        <Card className="p-6">
+          <h2 className="mb-4 text-2xl font-bold">FAQs</h2>
           
           <div className="space-y-4">
             <div>
@@ -132,8 +133,7 @@ export default function GuidePage() {
             <div>
               <p className="font-semibold mb-2">Can I change the price after creating a vault?</p>
               <p className="text-slate-600 text-sm">
-                Currently, you'll need to create a new vault with the updated price. We're working on 
-                edit functionality for future versions.
+                Currently, unpaid vaults can be edited from the dashboard or the vault page. Paid vaults stay locked.
               </p>
             </div>
             <div>
@@ -151,8 +151,8 @@ export default function GuidePage() {
               </p>
             </div>
           </div>
-        </section>
+        </Card>
       </div>
-    </main>
+    </div>
   );
 }

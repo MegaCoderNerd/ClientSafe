@@ -1,10 +1,11 @@
 import { DeleteVaultButton } from "@/components/delete-vault-button";
 import { EditVaultForm } from "@/components/edit-vault-form";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { authOptions } from "@/lib/auth";
 import { fetchDeliveryProjectById } from "@/lib/delivery-project";
 import { supabase } from "@/lib/supabase";
 import { getServerSession } from "next-auth";
-import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
@@ -40,12 +41,12 @@ export default async function EditVaultPage({ params }: Props) {
   if (!asset) notFound();
 
   return (
-    <main className="mx-auto flex max-w-3xl flex-col gap-6 p-8">
-      <Link href={`/p/${projectId}`} className="inline-flex items-center text-blue-600 hover:text-blue-700">
-        <span className="mr-2">←</span> Back to vault
-      </Link>
-      <section className="rounded-xl border bg-white p-6 shadow-sm">
-        <h1 className="text-2xl font-semibold">Edit vault</h1>
+    <div className="mx-auto flex max-w-3xl flex-col gap-6 p-8">
+      <Button href={`/p/${projectId}`} variant="ghost" size="sm" className="w-fit px-0">
+        ← Back to vault
+      </Button>
+      <Card className="p-6">
+        <h1 className="font-display text-2xl font-semibold">Edit vault</h1>
         <p className="mt-2 text-sm text-slate-600">
           Unpaid deliveries can be changed completely. Paid vaults stay locked.
         </p>
@@ -73,7 +74,7 @@ export default async function EditVaultPage({ params }: Props) {
             }}
           />
         </div>
-      </section>
-    </main>
+      </Card>
+    </div>
   );
 }

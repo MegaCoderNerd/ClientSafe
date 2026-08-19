@@ -1,6 +1,8 @@
 "use client";
 
+import { Button } from "@/components/ui/button";
 import { formatLocalDayLabel, formatLocalTime, localDayKey } from "@/lib/chat-time";
+import { playUiSound } from "@/lib/ui-sound";
 import { useUserTimeZone } from "@/components/time-zone-provider";
 import { createClient } from "@/utils/supabase/client";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -124,6 +126,7 @@ export function Chat({ projectId, currentUserId, otherUserName, className = "" }
       if (response.ok) {
         const newMessage = await response.json();
         setMessages((prev) => [...prev, newMessage]);
+        playUiSound("success");
         scrollToBottom();
       } else {
         setInput(messageContent);
@@ -137,12 +140,12 @@ export function Chat({ projectId, currentUserId, otherUserName, className = "" }
   };
 
   return (
-      <div className={`flex h-full min-h-[20rem] flex-col gap-4 rounded-xl border bg-white p-4 shadow-sm sm:min-h-[28rem] ${className}`}>
-        <h2 className="text-lg font-semibold">Chat with {otherUserName}</h2>
+      <div className={`flex h-full min-h-[16rem] flex-col gap-2 overflow-hidden rounded-xl border border-border/10 bg-white/80 p-3 shadow-card ${className}`}>
+        <h2 className="text-sm font-semibold">Chat with {otherUserName}</h2>
 
         <div
             ref={chatContainerRef}
-            className="flex-1 overflow-y-auto border rounded-lg p-4 bg-slate-50 space-y-3"
+            className="min-h-0 flex-1 space-y-2 overflow-y-auto rounded-lg border border-border/10 bg-slate-50/80 p-2"
         >
           {isLoadingMessages ? (
               <div className="flex items-center justify-center h-full text-slate-500">
@@ -170,11 +173,11 @@ export function Chat({ projectId, currentUserId, otherUserName, className = "" }
                     ) : null}
                     <div className={`flex ${isOwn ? "justify-end" : "justify-start"}`}>
                       <div
-                        className={`max-w-[85%] px-4 py-2 rounded-lg ${
-                          isOwn ? "bg-blue-500 text-white" : "bg-slate-200 text-slate-900"
+                        className={`max-w-[92%] rounded-lg px-3 py-1.5 ${
+                          isOwn ? "bg-accent text-white" : "bg-slate-200 text-slate-900"
                         }`}
                       >
-                        <p className="text-sm">{message.content}</p>
+                        <p className="text-sm leading-snug">{message.content}</p>
                         <p className={`mt-1 text-[10px] leading-none opacity-70 ${isOwn ? "text-right" : "text-left"}`}>
                           {formatLocalTime(message.createdAt, timeZone)}
                         </p>
@@ -193,15 +196,11 @@ export function Chat({ projectId, currentUserId, otherUserName, className = "" }
               onChange={(e) => setInput(e.target.value)}
               placeholder="Type your message..."
               disabled={loading}
-              className="flex-1 rounded-lg border px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-slate-100"
+              className="field-input flex-1 py-1.5"
           />
-          <button
-              type="submit"
-              disabled={loading || !input.trim()}
-              className="rounded-lg bg-blue-500 px-4 py-2 text-white text-sm font-medium hover:bg-blue-600 disabled:bg-slate-300 disabled:cursor-not-allowed"
-          >
+          <Button type="submit" size="sm" disabled={loading || !input.trim()}>
             {loading ? "Sending..." : "Send"}
-          </button>
+          </Button>
         </form>
       </div>
   );

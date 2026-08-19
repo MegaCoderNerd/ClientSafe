@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { AssetPreview } from "@/components/asset-preview";
+import { Button } from "@/components/ui/button";
 
 type Tab = "image" | "video" | "demo";
 
@@ -89,7 +90,7 @@ export function VaultPreviewStage({
   ) : null;
 
   return (
-    <section className="rounded-xl border bg-white p-4 shadow-sm sm:p-6">
+    <section className="glass-card p-4 sm:p-6">
       {!isOwner ? (
         <div className="mb-5 rounded-xl bg-slate-50 p-4">
           <p className="text-sm font-medium text-slate-900">Preview this delivery before you pay</p>
@@ -104,7 +105,7 @@ export function VaultPreviewStage({
       {showTip ? (
         <div className="mb-4 flex items-start justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
           <p>Start with the preview tabs. The live demo is a limited look at the work, not the full original.</p>
-          <button type="button" onClick={dismissTip} className="shrink-0 text-xs font-medium underline">
+          <button type="button" onClick={dismissTip} className="shrink-0 text-xs font-medium text-accent hover:underline">
             Got it
           </button>
         </div>
@@ -120,20 +121,21 @@ export function VaultPreviewStage({
                   key={item}
                   type="button"
                   onClick={() => setTab(item)}
-                  className={`rounded-md px-3 py-1 capitalize ${tab === item ? "bg-slate-900 text-white" : "text-slate-600"}`}
+                  className={`rounded-md px-3 py-1 capitalize transition duration-150 ${tab === item ? "bg-accent text-white" : "text-slate-600 hover:bg-white/80"}`}
                 >
                   {item === "demo" ? "Live demo" : item}
                 </button>
               ))}
             </div>
           ) : null}
-          <button
+          <Button
             type="button"
+            variant="secondary"
+            size="sm"
             onClick={() => setExpanded(true)}
-            className="rounded-md border px-3 py-1.5 text-sm hover:bg-slate-50"
           >
             Full window
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -159,13 +161,15 @@ export function VaultPreviewStage({
         <div className="fixed inset-0 z-[80] flex flex-col bg-slate-950">
           <div className="flex items-center justify-between gap-3 px-4 py-3 text-white">
             <p className="truncate text-sm font-medium">{title}</p>
-            <button
+            <Button
               type="button"
+              variant="secondary"
+              size="sm"
               onClick={() => setExpanded(false)}
-              className="shrink-0 rounded-md border border-white/20 px-3 py-1.5 text-sm hover:bg-white/10"
+              className="border-white/20 bg-transparent text-white hover:bg-white/10 hover:text-white"
             >
               Close
-            </button>
+            </Button>
           </div>
           <div className="relative min-h-0 flex-1">
             {tab === "demo" ? demoFrame : preview}

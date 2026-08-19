@@ -1,7 +1,7 @@
 "use client";
 
 import { DeleteVaultButton } from "@/components/delete-vault-button";
-import Link from "next/link";
+import { Button } from "@/components/ui/button";
 import { useMemo, useState } from "react";
 
 export type OverviewProject = {
@@ -52,22 +52,22 @@ export function ProjectOverview({ projects }: { projects: OverviewProject[] }) {
   });
 
   return (
-    <section className="rounded-xl border bg-white p-6 shadow-sm">
-      <h2 className="text-2xl font-semibold">Project Overview</h2>
+    <section className="glass-card p-6">
+      <h2 className="font-display text-2xl font-semibold">Project Overview</h2>
       <p className="mt-2 text-sm text-slate-600">Track active deliveries, payment status, and income from paid vaults.</p>
 
       <div className="mt-4 grid gap-3 sm:grid-cols-3">
-        <div className="rounded-lg border bg-slate-50 p-4">
+        <div className="rounded-lg border border-border/10 bg-white/60 p-4">
           <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Awaiting payment</p>
           <p className="mt-1 text-2xl font-semibold">{totals.pendingCount}</p>
           <p className="text-sm text-slate-600">{money(totals.pendingTotal, totals.currency)} outstanding</p>
         </div>
-        <div className="rounded-lg border bg-slate-50 p-4">
+        <div className="rounded-lg border border-border/10 bg-white/60 p-4">
           <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Paid income</p>
           <p className="mt-1 text-2xl font-semibold">{money(totals.paidPayout, totals.currency)}</p>
           <p className="text-sm text-slate-600">{totals.paidCount} completed vault{totals.paidCount === 1 ? "" : "s"}</p>
         </div>
-        <div className="rounded-lg border bg-slate-50 p-4">
+        <div className="rounded-lg border border-border/10 bg-white/60 p-4">
           <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Platform fees</p>
           <p className="mt-1 text-2xl font-semibold">{money(totals.fees, totals.currency)}</p>
           <p className="text-sm text-slate-600">On captured payments</p>
@@ -80,14 +80,15 @@ export function ProjectOverview({ projects }: { projects: OverviewProject[] }) {
           ["pending", "Awaiting payment"],
           ["paid", "Paid"],
         ] as const).map(([id, label]) => (
-          <button
+          <Button
             key={id}
             type="button"
+            size="sm"
+            variant={filter === id ? "primary" : "secondary"}
             onClick={() => setFilter(id)}
-            className={`rounded-md px-3 py-1.5 text-sm ${filter === id ? "bg-slate-900 text-white" : "border"}`}
           >
             {label}
-          </button>
+          </Button>
         ))}
       </div>
 
@@ -98,7 +99,7 @@ export function ProjectOverview({ projects }: { projects: OverviewProject[] }) {
           {visible.map((project) => {
             const unpaid = project.paymentStatus === "PENDING";
             return (
-              <li key={project.id} className="flex flex-wrap items-start justify-between gap-3 p-4">
+              <li key={project.id} className="flex flex-col gap-3 p-4 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
                 <div>
                   <p className="font-medium">{project.title}</p>
                   <p className="text-sm text-slate-600">
@@ -109,7 +110,7 @@ export function ProjectOverview({ projects }: { projects: OverviewProject[] }) {
                     {project.paidAt ? ` • paid ${new Date(project.paidAt).toLocaleDateString()}` : null}
                   </p>
                 </div>
-                <div className="flex flex-wrap items-center gap-2">
+                <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
                   <span
                     className={`rounded-full px-2 py-0.5 text-xs font-medium ${
                       unpaid ? "bg-amber-100 text-amber-800" : "bg-emerald-100 text-emerald-800"
@@ -117,14 +118,14 @@ export function ProjectOverview({ projects }: { projects: OverviewProject[] }) {
                   >
                     {unpaid ? "Awaiting payment" : "Paid"}
                   </span>
-                  <Link href={`/p/${project.id}`} className="rounded-md bg-blue-600 px-3 py-1.5 text-sm text-white hover:bg-blue-700">
+                  <Button href={`/p/${project.id}`} size="sm">
                     View
-                  </Link>
+                  </Button>
                   {unpaid ? (
                     <>
-                      <Link href={`/p/${project.id}/edit`} className="rounded-md border px-3 py-1.5 text-sm hover:bg-slate-50">
+                      <Button href={`/p/${project.id}/edit`} variant="secondary" size="sm">
                         Edit
-                      </Link>
+                      </Button>
                       <DeleteVaultButton
                         projectId={project.id}
                         paymentStatus={project.paymentStatus}

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { deleteProject } from "@/app/actions";
+import { Button } from "@/components/ui/button";
 import { unpaidVaultDeleteState } from "@/lib/vault-delete";
 
 type Props = {
@@ -62,7 +63,7 @@ export function DeleteVaultButton({ projectId, paymentStatus, checkoutStartedAt,
         setError(result.error);
         return;
       }
-      router.push("/");
+      router.push("/dashboard");
       router.refresh();
     } catch {
       setError("Could not delete vault");
@@ -73,8 +74,10 @@ export function DeleteVaultButton({ projectId, paymentStatus, checkoutStartedAt,
 
   return (
     <div className="flex max-w-xs flex-col items-end">
-      <button
+      <Button
         type="button"
+        variant="danger"
+        size="sm"
         onClick={() => void handleDelete()}
         disabled={disabled}
         title={
@@ -84,10 +87,10 @@ export function DeleteVaultButton({ projectId, paymentStatus, checkoutStartedAt,
               ? `Checkout in progress. Deletion unlocks in ${waitLabel}.`
               : "Checkout in progress. Deletion is disabled."
         }
-        className={`whitespace-nowrap rounded-md border border-red-200 text-sm text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60 ${className ?? "px-3 py-1.5"}`}
+        className={className}
       >
         {busy ? "Deleting…" : "Delete vault"}
-      </button>
+      </Button>
       {!state.canDelete ? (
         <p className="mt-1 text-xs text-amber-700">
           {waitLabel

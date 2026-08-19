@@ -1,6 +1,7 @@
 "use client";
 
 import { ResendConfirmationButton } from "@/components/resend-confirmation-button";
+import { Button } from "@/components/ui/button";
 import { signIn } from "next-auth/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -19,7 +20,7 @@ export function SignInForm({
   verified = false,
   reset = false,
   initialError = null,
-  callbackUrl = "/",
+  callbackUrl = "/dashboard",
 }: {
   verified?: boolean;
   reset?: boolean;
@@ -53,7 +54,7 @@ export function SignInForm({
 
     if (!res?.error) {
       setLoading(false);
-      router.push(callbackUrl || "/");
+      router.push(callbackUrl || "/dashboard");
       router.refresh();
       return;
     }
@@ -79,7 +80,7 @@ export function SignInForm({
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="mt-1 w-full rounded-md border p-2"
+            className="field-input mt-1"
             required
           />
         </label>
@@ -90,18 +91,14 @@ export function SignInForm({
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="mt-1 w-full rounded-md border p-2"
+            className="field-input mt-1"
             required
           />
         </label>
 
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full rounded-md bg-slate-900 px-4 py-2 text-white disabled:opacity-60 hover:bg-slate-800"
-        >
+        <Button type="submit" disabled={loading} className="w-full">
           {loading ? "Signing in..." : "Sign In"}
-        </button>
+        </Button>
 
         <div className="flex items-start justify-between gap-4">
           <Link href="/auth/forgot-password" className="text-sm text-slate-600 hover:underline">
@@ -117,22 +114,24 @@ export function SignInForm({
       <div className="border-t pt-4 space-y-3">
         <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Demo Accounts</p>
         <div className="flex flex-col gap-2">
-          <button
+          <Button
             type="button"
+            variant="secondary"
             disabled={loading}
             onClick={() => handleLogin("freelancer@clientvault.dev", "demo123")}
-            className="w-full rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+            className="w-full"
           >
             Freelancer Demo
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
+            variant="secondary"
             disabled={loading}
             onClick={() => handleLogin("client@clientvault.dev", "demo123")}
-            className="w-full rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+            className="w-full"
           >
             Client Demo
-          </button>
+          </Button>
         </div>
       </div>
     </div>

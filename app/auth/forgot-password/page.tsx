@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
@@ -35,9 +37,9 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-md flex-col items-center p-6 pt-20">
-      <section className="w-full rounded-xl border bg-white p-6 shadow-sm">
-        <h1 className="text-2xl font-semibold">Forgot password</h1>
+    <div className="mx-auto flex min-h-[calc(100dvh-3.5rem)] max-w-md flex-col items-center p-6 pt-8 sm:min-h-[calc(100dvh-4rem)] sm:pt-12">
+      <Card className="w-full p-6">
+        <h1 className="font-display text-2xl font-semibold">Forgot password</h1>
         <p className="mt-2 text-sm text-slate-600">
           Enter your email and we will send a reset link. This works with Gmail, Outlook, and any other inbox.
         </p>
@@ -49,27 +51,23 @@ export default function ForgotPasswordPage() {
               type="email"
               value={email}
               onChange={(event) => setEmail(event.target.value)}
-              className="mt-1 w-full rounded-md border p-2"
+              className="field-input mt-1"
               required
             />
           </label>
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full rounded-md bg-slate-900 px-4 py-2 text-white disabled:opacity-60"
-          >
+          <Button type="submit" disabled={loading} className="w-full">
             {loading ? "Sending..." : "Send reset link"}
-          </button>
+          </Button>
           {error ? <p className="text-sm text-red-600">{error}</p> : null}
           {message ? <p className="text-sm text-green-700">{message}</p> : null}
         </form>
 
         <p className="mt-4 text-sm">
-          <Link href="/auth/signin" className="text-blue-600 hover:underline">
+          <Link href="/auth/signin" className="text-accent hover:underline">
             Back to sign in
           </Link>
         </p>
-      </section>
-    </main>
+      </Card>
+    </div>
   );
 }

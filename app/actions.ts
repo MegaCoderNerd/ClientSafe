@@ -172,6 +172,7 @@ export async function createProject(formData: FormData): Promise<ActionResult> {
   }
 
   revalidatePath("/");
+  revalidatePath("/dashboard");
   return { ok: true, projectId: project.id };
 }
 
@@ -369,6 +370,7 @@ export async function updateProject(formData: FormData): Promise<ActionResult> {
   }
 
   revalidatePath("/");
+  revalidatePath("/dashboard");
   revalidatePath(`/p/${project.id}`);
   revalidatePath(`/p/${project.id}/edit`);
   return { ok: true, projectId: project.id };
@@ -525,6 +527,7 @@ export async function deleteProject(formData: FormData): Promise<ActionResult> {
 
     if (!latest) {
       revalidatePath("/");
+      revalidatePath("/dashboard");
       return { ok: true, projectId: project.id };
     }
     if (latest.paymentStatus !== "PENDING") {
@@ -538,6 +541,7 @@ export async function deleteProject(formData: FormData): Promise<ActionResult> {
   }
 
   revalidatePath("/");
+  revalidatePath("/dashboard");
   revalidatePath(`/p/${project.id}`);
   return { ok: true, projectId: project.id };
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
 
 export function ResendConfirmationButton({ email }: { email: string }) {
@@ -49,14 +50,9 @@ export function ResendConfirmationButton({ email }: { email: string }) {
 
   return (
     <div className="flex flex-col items-end gap-1 text-right">
-      <button
-        type="button"
-        onClick={onClick}
-        disabled={cooldown > 0 || busy}
-        className="text-sm text-slate-600 hover:underline disabled:cursor-not-allowed disabled:opacity-50 disabled:no-underline"
-      >
+      <Button type="button" variant="ghost" size="sm" onClick={onClick} disabled={cooldown > 0 || busy}>
         Resend
-      </button>
+      </Button>
       {error ? <p className="text-xs text-red-600">{error}</p> : null}
       {message ? <p className="text-xs text-green-700">{message}</p> : null}
     </div>

@@ -1,6 +1,8 @@
 "use client";
 
 import { ResendConfirmationButton } from "@/components/resend-confirmation-button";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -57,9 +59,9 @@ export default function SignUpPage() {
   }
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-4xl flex-col justify-start items-center p-8 pt-20">
-      <section className="w-full max-w-md rounded-xl border bg-white p-6 shadow-sm">
-        <h1 className="text-2xl font-semibold mb-2">Create your account</h1>
+    <div className="mx-auto flex min-h-[calc(100dvh-3.5rem)] max-w-4xl flex-col items-center justify-start p-6 pt-8 sm:min-h-[calc(100dvh-4rem)] sm:p-8 sm:pt-12">
+      <Card className="w-full max-w-md p-6">
+        <h1 className="mb-2 font-display text-2xl font-semibold">Create your account</h1>
         <p className="text-sm text-slate-600 mb-4">
           Sign up with any email. We will send a verification link before you can sign in.
         </p>
@@ -74,7 +76,7 @@ export default function SignUpPage() {
             </div>
             <button
               type="button"
-              className="text-blue-600 hover:underline"
+              className="text-accent hover:underline"
               onClick={() => router.push("/auth/signin")}
             >
               Go to sign in
@@ -87,7 +89,7 @@ export default function SignUpPage() {
               <input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="mt-1 w-full rounded-md border p-2"
+                className="field-input mt-1"
                 required
               />
             </label>
@@ -98,7 +100,7 @@ export default function SignUpPage() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="mt-1 w-full rounded-md border p-2"
+                className="field-input mt-1"
                 required
               />
             </label>
@@ -109,23 +111,19 @@ export default function SignUpPage() {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="mt-1 w-full rounded-md border p-2"
+                className="field-input mt-1"
                 required
                 minLength={6}
               />
             </label>
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full rounded-md bg-slate-900 px-4 py-2 text-white disabled:opacity-60"
-            >
+            <Button type="submit" disabled={loading} className="w-full">
               {loading ? "Creating account..." : "Sign Up"}
-            </button>
+            </Button>
 
             <div className="flex items-start justify-between gap-4">
               {canResetPassword ? (
-                <Link href="/auth/forgot-password" className="text-sm text-blue-600 hover:underline">
+                <Link href="/auth/forgot-password" className="text-sm text-accent hover:underline">
                   Reset password
                 </Link>
               ) : (
@@ -137,7 +135,7 @@ export default function SignUpPage() {
             {error ? <p className="text-sm text-red-600">{error}</p> : null}
           </form>
         )}
-      </section>
-    </main>
+      </Card>
+    </div>
   );
 }

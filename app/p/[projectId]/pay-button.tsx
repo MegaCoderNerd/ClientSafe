@@ -1,5 +1,7 @@
 "use client";
 
+import { Button } from "@/components/ui/button";
+import { playUiSound } from "@/lib/ui-sound";
 import { useState } from "react";
 
 type Props = {
@@ -43,7 +45,10 @@ export function PayButton({
 
       const data = (await response.json()) as { approveUrl?: string; paid?: boolean; error?: string };
       if (data.paid) {
-        window.location.assign(`/p/${projectId}`);
+        playUiSound("success");
+        window.setTimeout(() => {
+          window.location.assign(`/p/${projectId}`);
+        }, 180);
         return;
       }
       if (!response.ok) {
@@ -78,23 +83,22 @@ export function PayButton({
           Sandbox hosted checkout declines random/fake cards. Use Visa <span className="font-mono">4111111111111111</span>, expiry 12/2028, CVV 123, or complete a sandbox test payment below.
         </p>
       ) : null}
-      <button
+      <Button
         type="button"
         onClick={() => void startCheckout(false)}
         disabled={isLoading}
-        className="rounded-md bg-emerald-600 px-4 py-2 text-white disabled:cursor-not-allowed disabled:opacity-70"
       >
         {isLoading && !sandboxPaying ? "Redirecting to PayPal..." : "Pay to Unlock"}
-      </button>
+      </Button>
       {sandboxMode ? (
-        <button
+        <Button
           type="button"
+          variant="secondary"
           onClick={() => void startCheckout(true)}
           disabled={isLoading}
-          className="rounded-md border border-amber-700 px-4 py-2 text-sm text-amber-900 disabled:cursor-not-allowed disabled:opacity-70"
         >
           {sandboxPaying ? "Completing sandbox payment…" : "Complete sandbox test payment"}
-        </button>
+        </Button>
       ) : null}
       {error ? <p className="text-sm text-red-600">{error}</p> : null}
     </div>

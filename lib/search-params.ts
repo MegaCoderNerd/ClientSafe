@@ -6,7 +6,7 @@ export function firstQueryValue(value: string | string[] | undefined) {
 
 export function safeCallbackPath(value: string | undefined) {
   if (!value || !value.startsWith("/") || value.startsWith("//") || value.includes("://")) {
-    return "/";
+    return "/dashboard";
   }
   return value;
 }

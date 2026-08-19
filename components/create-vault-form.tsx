@@ -4,8 +4,10 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createProject } from "@/app/actions";
 import { AssetImage } from "@/components/asset-image";
+import { Button } from "@/components/ui/button";
 import { compressImageFile } from "@/lib/compress-image";
 import { STOCK_ASSETS, type StockAsset } from "@/lib/stock-assets";
+import { playUiSound } from "@/lib/ui-sound";
 import { paintFrame, uploadAssets } from "@/lib/upload-client";
 
 type ClientOption = {
@@ -97,7 +99,9 @@ export function CreateVaultForm({ clients }: { clients: ClientOption[] }) {
         return;
       }
 
+      router.push("/dashboard?tab=mine");
       router.refresh();
+      playUiSound("success");
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : "Could not create vault");
     } finally {
@@ -116,7 +120,7 @@ export function CreateVaultForm({ clients }: { clients: ClientOption[] }) {
           type="email"
           required
           placeholder="client@example.com"
-          className="rounded-md border p-2"
+          className="field-input"
         />
       </label>
       <label className="flex flex-col gap-2 text-sm">
@@ -129,7 +133,7 @@ export function CreateVaultForm({ clients }: { clients: ClientOption[] }) {
           step="0.01"
           required
           defaultValue={selected.price}
-          className="rounded-md border p-2"
+          className="field-input"
         />
       </label>
       <label className="flex flex-col gap-2 text-sm md:col-span-2">
@@ -139,7 +143,7 @@ export function CreateVaultForm({ clients }: { clients: ClientOption[] }) {
           name="title"
           required
           defaultValue={source === "stock" ? selected.title : ""}
-          className="rounded-md border p-2"
+          className="field-input"
         />
       </label>
       <label className="flex flex-col gap-2 text-sm md:col-span-2">
@@ -149,7 +153,7 @@ export function CreateVaultForm({ clients }: { clients: ClientOption[] }) {
           name="description"
           required
           defaultValue={source === "stock" ? selected.description : ""}
-          className="rounded-md border p-2"
+          className="field-input"
           rows={3}
         />
       </label>
@@ -166,20 +170,22 @@ export function CreateVaultForm({ clients }: { clients: ClientOption[] }) {
       <fieldset className="md:col-span-2">
         <legend className="mb-2 text-sm font-medium">Asset source</legend>
         <div className="mb-3 flex gap-2">
-          <button
+          <Button
             type="button"
+            size="sm"
+            variant={source === "stock" ? "primary" : "secondary"}
             onClick={() => setSource("stock")}
-            className={`rounded-md px-3 py-1.5 text-sm ${source === "stock" ? "bg-slate-900 text-white" : "border"}`}
           >
             Stock pack
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
+            size="sm"
+            variant={source === "upload" ? "primary" : "secondary"}
             onClick={() => setSource("upload")}
-            className={`rounded-md px-3 py-1.5 text-sm ${source === "upload" ? "bg-slate-900 text-white" : "border"}`}
           >
             Upload from computer
-          </button>
+          </Button>
         </div>
 
         {source === "stock" ? (
@@ -202,22 +208,22 @@ export function CreateVaultForm({ clients }: { clients: ClientOption[] }) {
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="flex flex-col gap-2 text-sm">
               Preview image
-              <input name="previewFile" type="file" accept="image/*" className="rounded-md border p-2" />
+              <input name="previewFile" type="file" accept="image/*" className="field-input" />
               <span className="text-xs text-slate-500">Poster for dashboard cards. Provide this or a video.</span>
             </label>
             <label className="flex flex-col gap-2 text-sm">
               Preview video
-              <input name="previewVideoFile" type="file" accept="video/mp4,video/webm,.mp4,.webm" className="rounded-md border p-2" />
+              <input name="previewVideoFile" type="file" accept="video/mp4,video/webm,.mp4,.webm" className="field-input" />
               <span className="text-xs text-slate-500">Optional mp4 or webm, up to 30MB. Not compressed.</span>
             </label>
             <label className="flex flex-col gap-2 text-sm">
               Live demo zip
-              <input name="demoZipFile" type="file" accept=".zip,application/zip" className="rounded-md border p-2" />
+              <input name="demoZipFile" type="file" accept=".zip,application/zip" className="field-input" />
               <span className="text-xs text-slate-500">Optional static HTML/CSS/JS with index.html at the root. 5MB max.</span>
             </label>
             <label className="flex flex-col gap-2 text-sm">
               Original file
-              <input name="originalFile" type="file" required={source === "upload"} className="rounded-md border p-2" />
+              <input name="originalFile" type="file" required={source === "upload"} className="field-input" />
               <span className="text-xs text-slate-500">Unlocked after payment. Images are resized; zip/pdf stay as-is.</span>
             </label>
           </div>
@@ -243,11 +249,7 @@ export function CreateVaultForm({ clients }: { clients: ClientOption[] }) {
         </div>
       ) : null}
 
-      <button
-        type="submit"
-        disabled={busy}
-        className="rounded-md bg-slate-900 px-4 py-2 text-white disabled:cursor-not-allowed disabled:opacity-60 md:col-span-2 font-medium"
-      >
+      <Button type="submit" disabled={busy} className="md:col-span-2">
         {busy
           ? phase === "upload"
             ? `Uploading ${uploadPercent}%…`
@@ -255,7 +257,7 @@ export function CreateVaultForm({ clients }: { clients: ClientOption[] }) {
               ? "Preparing files…"
               : "Saving vault…"
           : "Create Vault"}
-      </button>
+      </Button>
     </form>
   );
 }
@@ -273,8 +275,8 @@ function StockPackButton({
     <button
       type="button"
       onClick={() => onSelect(asset.id)}
-      className={`overflow-hidden rounded-lg border text-left ${
-        selected ? "border-slate-900 ring-2 ring-slate-900" : "border-slate-200 hover:border-slate-400"
+      className={`overflow-hidden rounded-lg border text-left transition duration-150 hover:-translate-y-0.5 active:scale-[0.98] ${
+        selected ? "border-accent ring-2 ring-accent" : "border-border/10 hover:border-slate-400"
       }`}
     >
       <span className="relative block aspect-video bg-slate-100">

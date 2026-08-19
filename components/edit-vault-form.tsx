@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { updateProject } from "@/app/actions";
 import { AssetImage } from "@/components/asset-image";
+import { Button } from "@/components/ui/button";
 import { compressImageFile } from "@/lib/compress-image";
 import { STOCK_ASSETS, type StockAsset } from "@/lib/stock-assets";
 import { paintFrame, uploadAssets } from "@/lib/upload-client";
@@ -152,7 +153,7 @@ export function EditVaultForm({
           required
           defaultValue={currentClient?.email ?? ""}
           placeholder="client@example.com"
-          className="rounded-md border p-2"
+          className="field-input"
         />
       </label>
       <label className="flex flex-col gap-2 text-sm">
@@ -164,42 +165,45 @@ export function EditVaultForm({
           step="0.01"
           required
           defaultValue={(vault.price / 100).toFixed(2)}
-          className="rounded-md border p-2"
+          className="field-input"
         />
       </label>
       <label className="flex flex-col gap-2 text-sm md:col-span-2">
         Title
-        <input name="title" required defaultValue={vault.title} className="rounded-md border p-2" />
+        <input name="title" required defaultValue={vault.title} className="field-input" />
       </label>
       <label className="flex flex-col gap-2 text-sm md:col-span-2">
         Description
-        <textarea name="description" required defaultValue={vault.description} className="rounded-md border p-2" rows={3} />
+        <textarea name="description" required defaultValue={vault.description} className="field-input" rows={3} />
       </label>
 
       <fieldset className="md:col-span-2">
         <legend className="mb-2 text-sm font-medium">Assets</legend>
         <div className="mb-3 flex flex-wrap gap-2">
-          <button
+          <Button
             type="button"
+            size="sm"
+            variant={source === "keep" ? "primary" : "secondary"}
             onClick={() => setSource("keep")}
-            className={`rounded-md px-3 py-1.5 text-sm ${source === "keep" ? "bg-slate-900 text-white" : "border"}`}
           >
             Keep current files
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
+            size="sm"
+            variant={source === "stock" ? "primary" : "secondary"}
             onClick={() => setSource("stock")}
-            className={`rounded-md px-3 py-1.5 text-sm ${source === "stock" ? "bg-slate-900 text-white" : "border"}`}
           >
             Replace with stock pack
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
+            size="sm"
+            variant={source === "upload" ? "primary" : "secondary"}
             onClick={() => setSource("upload")}
-            className={`rounded-md px-3 py-1.5 text-sm ${source === "upload" ? "bg-slate-900 text-white" : "border"}`}
           >
             Upload replacements
-          </button>
+          </Button>
         </div>
 
         {source === "keep" ? (
@@ -217,8 +221,8 @@ export function EditVaultForm({
                   key={asset.id}
                   type="button"
                   onClick={() => setSelectedId(asset.id)}
-                  className={`overflow-hidden rounded-lg border text-left ${
-                    asset.id === selected.id ? "border-slate-900 ring-2 ring-slate-900" : "border-slate-200 hover:border-slate-400"
+                  className={`overflow-hidden rounded-lg border text-left transition duration-150 hover:-translate-y-0.5 active:scale-[0.98] ${
+                    asset.id === selected.id ? "border-accent ring-2 ring-accent" : "border-border/10 hover:border-slate-400"
                   }`}
                 >
                   <span className="relative block aspect-video bg-slate-100">
@@ -238,22 +242,22 @@ export function EditVaultForm({
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="flex flex-col gap-2 text-sm">
               Preview image
-              <input name="previewFile" type="file" accept="image/*" className="rounded-md border p-2" />
+              <input name="previewFile" type="file" accept="image/*" className="field-input" />
               <span className="text-xs text-slate-500">Leave empty to keep the current image.</span>
             </label>
             <label className="flex flex-col gap-2 text-sm">
               Preview video
-              <input name="previewVideoFile" type="file" accept="video/mp4,video/webm,.mp4,.webm" className="rounded-md border p-2" />
+              <input name="previewVideoFile" type="file" accept="video/mp4,video/webm,.mp4,.webm" className="field-input" />
               <span className="text-xs text-slate-500">Optional mp4 or webm, up to 30MB.</span>
             </label>
             <label className="flex flex-col gap-2 text-sm">
               Live demo zip
-              <input name="demoZipFile" type="file" accept=".zip,application/zip" className="rounded-md border p-2" />
+              <input name="demoZipFile" type="file" accept=".zip,application/zip" className="field-input" />
               <span className="text-xs text-slate-500">Optional static HTML zip with index.html.</span>
             </label>
             <label className="flex flex-col gap-2 text-sm">
               Original file
-              <input name="originalFile" type="file" className="rounded-md border p-2" />
+              <input name="originalFile" type="file" className="field-input" />
               <span className="text-xs text-slate-500">Leave empty to keep the current original.</span>
             </label>
           </div>
@@ -279,11 +283,7 @@ export function EditVaultForm({
         </div>
       ) : null}
 
-      <button
-        type="submit"
-        disabled={busy}
-        className="rounded-md bg-slate-900 px-4 py-2 text-white disabled:cursor-not-allowed disabled:opacity-60 md:col-span-2 font-medium"
-      >
+      <Button type="submit" disabled={busy} className="md:col-span-2">
         {busy
           ? phase === "upload"
             ? `Uploading ${uploadPercent}%…`
@@ -291,7 +291,7 @@ export function EditVaultForm({
               ? "Preparing files…"
               : "Saving vault…"
           : "Save changes"}
-      </button>
+      </Button>
     </form>
   );
 }

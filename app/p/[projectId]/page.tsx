@@ -2,6 +2,7 @@ import { Chat } from "@/components/chat";
 import { DeleteVaultButton } from "@/components/delete-vault-button";
 import { DownloadOriginalLink } from "@/components/download-original-link";
 import { SupabaseLiveRefresh } from "@/components/supabase-live-refresh";
+import { Button } from "@/components/ui/button";
 import { VaultPreviewStage } from "@/components/vault-preview-stage";
 import { PayButton } from "@/app/p/[projectId]/pay-button";
 import { PayPalReturnHandler } from "@/app/p/[projectId]/paypal-return-handler";
@@ -88,28 +89,28 @@ export default async function ClientPreviewPage({ params, searchParams }: Props)
     const otherUserName = isVaultOwner ? clientData?.name : freelancerData?.name;
 
     return (
-        <main className="mx-auto flex max-w-6xl flex-col gap-6 p-4 sm:p-8">
+        <main className="mx-auto flex max-w-6xl flex-col gap-6 p-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] sm:p-8">
             <SupabaseLiveRefresh
                 tables={[
                     { table: "DeliveryProject", filter: `id=eq.${projectId}` },
                     { table: "Asset", filter: `projectId=eq.${projectId}` },
                 ]}
             />
-            <Link href="/" className="inline-flex items-center text-blue-600 hover:text-blue-700">
+            <Link href="/dashboard" className="inline-flex items-center text-accent hover:text-accent-hover">
                 <span className="mr-2">←</span> Back to Dashboard
             </Link>
 
-            <div className="grid min-w-0 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
+            <div className="grid min-w-0 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_18rem]">
                 <div className="flex min-w-0 flex-col gap-6">
-                    <section className="rounded-xl border bg-white p-6 shadow-sm">
+                    <section className="glass-card p-6">
                         <div className="flex flex-wrap items-start justify-between gap-3">
-                            <h1 className="text-2xl font-semibold">{projectData.title}</h1>
+                            <h1 className="font-display text-2xl font-semibold">{projectData.title}</h1>
                             {isVaultOwner && projectData.paymentStatus === "PENDING" ? (
                                 <div className="flex flex-col items-end gap-1">
                                     <div className="flex flex-wrap items-start gap-2">
-                                    <Link href={`/p/${projectData.id}/edit`} className="rounded-md border px-3 py-1.5 text-sm hover:bg-slate-50">
+                                    <Button href={`/p/${projectData.id}/edit`} variant="secondary" size="sm">
                                         Edit vault
-                                    </Link>
+                                    </Button>
                                     <DeleteVaultButton
                                         projectId={projectData.id}
                                         paymentStatus={projectData.paymentStatus}
@@ -143,16 +144,16 @@ export default async function ClientPreviewPage({ params, searchParams }: Props)
                         isPaid={projectData.paymentStatus === "COMPLETED"}
                     />
 
-                    <section className="rounded-xl border bg-white p-6 shadow-sm">
+                    <section className="glass-card p-6">
                         {isVaultOwner ? (
                             <div className="space-y-3">
                                 <p className="text-sm text-slate-600">This is your vault. Download your original asset:</p>
-                                <DownloadOriginalLink href={protectedDownloadUrl} className="inline-block rounded-md bg-slate-900 px-4 py-2 text-white hover:bg-slate-800">
+                                <DownloadOriginalLink href={protectedDownloadUrl}>
                                     Download Original Asset
                                 </DownloadOriginalLink>
                             </div>
                         ) : projectData.paymentStatus === "COMPLETED" ? (
-                            <DownloadOriginalLink href={protectedDownloadUrl} className="inline-block rounded-md bg-slate-900 px-4 py-2 text-white hover:bg-slate-800">
+                            <DownloadOriginalLink href={protectedDownloadUrl}>
                                 Download Original Asset
                             </DownloadOriginalLink>
                         ) : (
@@ -181,11 +182,12 @@ export default async function ClientPreviewPage({ params, searchParams }: Props)
                     </section>
                 </div>
 
-                <aside className="min-w-0 lg:sticky lg:top-20 lg:h-[calc(100vh-6.5rem)]">
+                <aside className="min-w-0 max-h-[min(22rem,45dvh)] lg:sticky lg:top-20 lg:max-h-[min(36rem,calc(100dvh-8rem))]">
                     <Chat
                         projectId={projectData.id}
                         currentUserId={currentUserId}
                         otherUserName={otherUserName || "User"}
+                        className="max-h-[min(22rem,45dvh)] lg:max-h-[min(36rem,calc(100dvh-8rem))]"
                     />
                 </aside>
             </div>

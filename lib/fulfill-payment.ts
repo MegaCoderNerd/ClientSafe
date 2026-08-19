@@ -93,6 +93,7 @@ export async function fulfillPaidVault(options: {
   }
 
   revalidatePath("/");
+  revalidatePath("/dashboard");
   revalidatePath(`/p/${project.id}`);
   return { alreadyFulfilled };
 }

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { playUiSound } from "@/lib/ui-sound";
 
 type Props = {
   projectId: string;
@@ -34,6 +35,7 @@ export function PayPalReturnHandler({ projectId, token }: Props) {
           return;
         }
         if (!cancelled) {
+          playUiSound("success");
           router.replace(`/p/${projectId}`);
           router.refresh();
         }

@@ -1,6 +1,8 @@
 "use client";
 
 import { createClient } from "@/utils/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import type { EmailOtpType } from "@supabase/supabase-js";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -94,9 +96,9 @@ export default function UpdatePasswordPage() {
   }
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-md flex-col items-center p-6 pt-20">
-      <section className="w-full rounded-xl border bg-white p-6 shadow-sm">
-        <h1 className="text-2xl font-semibold">Set a new password</h1>
+    <div className="mx-auto flex min-h-[calc(100dvh-3.5rem)] max-w-md flex-col items-center p-6 pt-8 sm:min-h-[calc(100dvh-4rem)] sm:pt-12">
+      <Card className="w-full p-6">
+        <h1 className="font-display text-2xl font-semibold">Set a new password</h1>
         <p className="mt-2 text-sm text-slate-600">Choose a new password for your ClientVault account.</p>
 
         <form onSubmit={onSubmit} className="mt-4 space-y-4">
@@ -106,7 +108,7 @@ export default function UpdatePasswordPage() {
               type="password"
               value={password}
               onChange={(event) => setPassword(event.target.value)}
-              className="mt-1 w-full rounded-md border p-2"
+              className="field-input mt-1"
               required
               minLength={6}
               disabled={!ready}
@@ -118,22 +120,18 @@ export default function UpdatePasswordPage() {
               type="password"
               value={confirm}
               onChange={(event) => setConfirm(event.target.value)}
-              className="mt-1 w-full rounded-md border p-2"
+              className="field-input mt-1"
               required
               minLength={6}
               disabled={!ready}
             />
           </label>
-          <button
-            type="submit"
-            disabled={loading || !ready}
-            className="w-full rounded-md bg-slate-900 px-4 py-2 text-white disabled:opacity-60"
-          >
+          <Button type="submit" disabled={loading || !ready} className="w-full">
             {loading ? "Saving..." : "Update password"}
-          </button>
+          </Button>
           {error ? <p className="text-sm text-red-600">{error}</p> : null}
         </form>
-      </section>
-    </main>
+      </Card>
+    </div>
   );
 }

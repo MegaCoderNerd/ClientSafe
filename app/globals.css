@@ -1,3 +1,189 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+:root {
+  --color-ink: 15 23 42;
+  --color-canvas: 238 242 248;
+  --color-surface: 255 255 255;
+  --color-accent: 79 70 225;
+  --color-accent-hover: 67 56 202;
+  --color-cyan: 6 182 212;
+  --color-border: 15 23 42;
+  --radius-lg: 1rem;
+  --shadow-card: 0 18px 40px -24px rgb(15 23 42 / 0.28);
+}
+
+@layer components {
+  .field-input {
+    @apply w-full rounded-lg border bg-white/80 px-3 py-2 text-sm text-ink shadow-sm outline-none transition duration-150;
+    @apply focus:border-accent focus:ring-2;
+    @apply disabled:cursor-not-allowed disabled:opacity-60;
+    border-color: rgb(var(--color-border) / 0.1);
+  }
+
+  .field-input:focus {
+    --tw-ring-color: rgb(var(--color-accent) / 0.25);
+  }
+
+  .glass-card {
+    border: 1px solid rgb(var(--color-border) / 0.1);
+    background: rgb(var(--color-surface) / 0.76);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-card);
+    backdrop-filter: blur(10px);
+  }
+}
+
+.ambient-backdrop {
+  pointer-events: none;
+  contain: paint;
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  z-index: 0;
+  background:
+    radial-gradient(ellipse at 18% 8%, rgb(79 70 225 / 0.2), transparent 52%),
+    radial-gradient(ellipse at 86% 18%, rgb(6 182 212 / 0.16), transparent 48%),
+    radial-gradient(ellipse at 50% 100%, rgb(15 23 42 / 0.06), transparent 46%);
+}
+
+.ambient-orb {
+  position: absolute;
+  display: block;
+  border-radius: 999px;
+  filter: blur(56px);
+  will-change: transform, opacity;
+  transform: translate3d(0, 0, 0);
+}
+
+.ambient-orb-a {
+  top: -12%;
+  left: 8%;
+  width: 22rem;
+  height: 22rem;
+  background: rgb(79 70 225 / 0.32);
+  opacity: 0.7;
+  animation: ambient-drift-a 22s ease-in-out infinite;
+}
+
+.ambient-orb-b {
+  top: 18%;
+  right: -8%;
+  width: 18rem;
+  height: 18rem;
+  background: rgb(6 182 212 / 0.28);
+  opacity: 0.65;
+  animation: ambient-drift-b 26s ease-in-out infinite;
+}
+
+.ambient-orb-c {
+  bottom: -18%;
+  left: 32%;
+  width: 20rem;
+  height: 20rem;
+  background: rgb(99 102 241 / 0.22);
+  opacity: 0.5;
+  animation: ambient-drift-c 20s ease-in-out infinite;
+}
+
+@keyframes ambient-drift-a {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 0.62;
+  }
+  50% {
+    transform: translate3d(6%, 10%, 0) scale(1.08);
+    opacity: 0.85;
+  }
+}
+
+@keyframes ambient-drift-b {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 0.55;
+  }
+  50% {
+    transform: translate3d(-8%, -6%, 0) scale(1.06);
+    opacity: 0.8;
+  }
+}
+
+@keyframes ambient-drift-c {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 0.42;
+  }
+  50% {
+    transform: translate3d(4%, -8%, 0) scale(1.1);
+    opacity: 0.7;
+  }
+}
+
+html.tab-hidden .ambient-orb {
+  animation-play-state: paused;
+}
+
+.landing-enter {
+  animation: landing-rise 0.7s ease-out both;
+}
+
+.landing-enter-delay-1 {
+  animation-delay: 90ms;
+}
+
+.landing-enter-delay-2 {
+  animation-delay: 180ms;
+}
+
+@keyframes landing-rise {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 14px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+html.tab-hidden .landing-enter {
+  animation-play-state: paused;
+}
+
+@media (max-width: 639px) {
+  .glass-card {
+    backdrop-filter: none;
+    background: rgb(var(--color-surface) / 0.94);
+  }
+
+  .ambient-orb {
+    animation: none;
+    filter: none;
+    opacity: 0.28;
+  }
+
+  .ambient-orb-a,
+  .ambient-orb-b {
+    width: 9rem;
+    height: 9rem;
+  }
+
+  .ambient-orb-c {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ambient-orb {
+    animation: none !important;
+    opacity: 0.45;
+  }
+
+  .landing-enter {
+    animation: none !important;
+  }
+}
