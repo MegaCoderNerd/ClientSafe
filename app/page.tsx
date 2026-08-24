@@ -43,7 +43,7 @@ export default async function HomePage() {
               Deliver work. Preview first. Unlock after payment.
             </h1>
             <p className="mt-4 max-w-prose text-base text-slate-600 sm:text-lg">
-              Secure digital asset delivery with preview-before-payment protection. Create vaults, share preview
+              Secure digital asset delivery with preview-before-payment protection. Create safes, share preview
               links, and unlock originals after payment.
             </p>
             <div className="mt-7">

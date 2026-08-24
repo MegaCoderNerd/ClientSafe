@@ -103,7 +103,7 @@ export function CreateVaultForm({ clients }: { clients: ClientOption[] }) {
       router.refresh();
       playUiSound("success");
     } catch (submitError) {
-      setError(submitError instanceof Error ? submitError.message : "Could not create vault");
+      setError(submitError instanceof Error ? submitError.message : "Could not create safe");
     } finally {
       setBusy(false);
       setPhase("idle");
@@ -239,7 +239,7 @@ export function CreateVaultForm({ clients }: { clients: ClientOption[] }) {
               ? "Preparing files…"
               : phase === "upload"
                 ? `Uploading in the background… ${uploadPercent}%`
-                : "Saving vault…"}
+                : "Saving safe…"}
           </p>
           {phase === "upload" ? (
             <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-200">
@@ -255,8 +255,8 @@ export function CreateVaultForm({ clients }: { clients: ClientOption[] }) {
             ? `Uploading ${uploadPercent}%…`
             : phase === "compress"
               ? "Preparing files…"
-              : "Saving vault…"
-          : "Create Vault"}
+              : "Saving safe…"
+          : "Create a Safe"}
       </Button>
     </form>
   );

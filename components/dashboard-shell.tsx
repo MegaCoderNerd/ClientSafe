@@ -9,7 +9,7 @@ export type DashboardTab = "overview" | "create" | "mine" | "shared";
 
 const TAB_LABELS: Record<DashboardTab, string> = {
   overview: "Overview",
-  create: "Create",
+  create: "Create a safe",
   mine: "My vaults",
   shared: "Shared",
 };

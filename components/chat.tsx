@@ -140,12 +140,12 @@ export function Chat({ projectId, currentUserId, otherUserName, className = "" }
   };
 
   return (
-      <div className={`flex h-full min-h-[16rem] flex-col gap-2 overflow-hidden rounded-xl border border-border/10 bg-white/80 p-3 shadow-card ${className}`}>
-        <h2 className="text-sm font-semibold">Chat with {otherUserName}</h2>
+      <div className={`flex h-full min-h-[22rem] flex-col gap-3 overflow-hidden rounded-xl border border-border/10 bg-white/80 p-4 shadow-card ${className}`}>
+        <h2 className="text-base font-semibold">Chat with {otherUserName}</h2>
 
         <div
             ref={chatContainerRef}
-            className="min-h-0 flex-1 space-y-2 overflow-y-auto rounded-lg border border-border/10 bg-slate-50/80 p-2"
+            className="min-h-0 flex-1 space-y-3 overflow-y-auto rounded-lg border border-border/10 bg-slate-50/80 p-3"
         >
           {isLoadingMessages ? (
               <div className="flex items-center justify-center h-full text-slate-500">
@@ -173,12 +173,12 @@ export function Chat({ projectId, currentUserId, otherUserName, className = "" }
                     ) : null}
                     <div className={`flex ${isOwn ? "justify-end" : "justify-start"}`}>
                       <div
-                        className={`max-w-[92%] rounded-lg px-3 py-1.5 ${
+                        className={`max-w-[92%] rounded-xl px-3.5 py-2 ${
                           isOwn ? "bg-accent text-white" : "bg-slate-200 text-slate-900"
                         }`}
                       >
-                        <p className="text-sm leading-snug">{message.content}</p>
-                        <p className={`mt-1 text-[10px] leading-none opacity-70 ${isOwn ? "text-right" : "text-left"}`}>
+                        <p className="text-[15px] leading-relaxed">{message.content}</p>
+                        <p className={`mt-1 text-[11px] leading-none opacity-70 ${isOwn ? "text-right" : "text-left"}`}>
                           {formatLocalTime(message.createdAt, timeZone)}
                         </p>
                       </div>
@@ -196,9 +196,9 @@ export function Chat({ projectId, currentUserId, otherUserName, className = "" }
               onChange={(e) => setInput(e.target.value)}
               placeholder="Type your message..."
               disabled={loading}
-              className="field-input flex-1 py-1.5"
+              className="field-input flex-1 py-2.5 text-[15px]"
           />
-          <Button type="submit" size="sm" disabled={loading || !input.trim()}>
+          <Button type="submit" disabled={loading || !input.trim()}>
             {loading ? "Sending..." : "Send"}
           </Button>
         </form>

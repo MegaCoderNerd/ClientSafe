@@ -27,15 +27,17 @@ export function AssetPreview({
 
   if (videoSrc && !showPlayBadge) {
     return (
-      <video
-        className={`h-full w-full ${fitClass} bg-slate-950`}
-        src={videoSrc}
-        poster={imageSrc || undefined}
-        controls
-        playsInline
-        preload="metadata"
-        controlsList="nodownload"
-      />
+      <div className="relative h-full w-full bg-slate-950">
+        <video
+          className={`h-full w-full ${fitClass}`}
+          src={videoSrc}
+          poster={imageSrc || undefined}
+          controls
+          playsInline
+          preload="metadata"
+          controlsList="nodownload"
+        />
+      </div>
     );
   }
 
@@ -52,7 +54,7 @@ export function AssetPreview({
   }
 
   return (
-    <>
+    <div className="relative h-full w-full">
       {isSvg(imageSrc) ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img src={imageSrc} alt={alt} className={`h-full w-full ${fitClass}`} />
@@ -64,6 +66,6 @@ export function AssetPreview({
           <span className="rounded-full bg-slate-950/80 px-3 py-1 text-xs font-medium text-white">Video</span>
         </span>
       ) : null}
-    </>
+    </div>
   );
 }

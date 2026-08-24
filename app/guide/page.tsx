@@ -16,9 +16,9 @@ export default function GuidePage() {
           
           <div className="space-y-4">
             <div>
-              <h3 className="text-lg font-semibold mb-2">1. Create a Vault</h3>
+              <h3 className="text-lg font-semibold mb-2">1. Create a Safe</h3>
               <p className="text-slate-600">
-                Open the Create tab on your dashboard and fill in the "Create New Vault" form. Enter the client email, set the price, 
+                Open the Create tab on your dashboard and fill in the &quot;Create a Safe&quot; form. Enter the client email, set the price, 
                 add a title and description, and provide URLs for both the watermarked preview and original file.
               </p>
             </div>
@@ -50,7 +50,7 @@ export default function GuidePage() {
             <div>
               <h3 className="text-lg font-semibold mb-2">1. Receive an Invitation</h3>
               <p className="text-slate-600">
-                A freelancer will create a vault and invite you as a client. You'll see it in the 
+                A freelancer will create a safe and invite you as a client. You'll see it in the 
                 "Vaults Shared With You" tab on your dashboard.
               </p>
             </div>
@@ -131,7 +131,7 @@ export default function GuidePage() {
               </p>
             </div>
             <div>
-              <p className="font-semibold mb-2">Can I change the price after creating a vault?</p>
+              <p className="font-semibold mb-2">Can I change the price after creating a safe?</p>
               <p className="text-slate-600 text-sm">
                 Currently, unpaid vaults can be edited from the dashboard or the vault page. Paid vaults stay locked.
               </p>

@@ -100,7 +100,7 @@ export default async function ClientPreviewPage({ params, searchParams }: Props)
                 <span className="mr-2">←</span> Back to Dashboard
             </Link>
 
-            <div className="grid min-w-0 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_18rem]">
+            <div className="grid min-w-0 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(26rem,32rem)]">
                 <div className="flex min-w-0 flex-col gap-6">
                     <section className="glass-card p-6">
                         <div className="flex flex-wrap items-start justify-between gap-3">
@@ -182,12 +182,12 @@ export default async function ClientPreviewPage({ params, searchParams }: Props)
                     </section>
                 </div>
 
-                <aside className="min-w-0 max-h-[min(22rem,45dvh)] lg:sticky lg:top-20 lg:max-h-[min(36rem,calc(100dvh-8rem))]">
+                <aside className="flex h-[min(40rem,75dvh)] min-h-[24rem] min-w-0 lg:sticky lg:top-20 lg:h-[calc(100dvh-7.5rem)] lg:min-h-0">
                     <Chat
                         projectId={projectData.id}
                         currentUserId={currentUserId}
                         otherUserName={otherUserName || "User"}
-                        className="max-h-[min(22rem,45dvh)] lg:max-h-[min(36rem,calc(100dvh-8rem))]"
+                        className="h-full min-h-0 w-full"
                     />
                 </aside>
             </div>

@@ -78,9 +78,9 @@ export default async function DashboardPage() {
           }
           create={
             <Card>
-              <h2 className="font-display text-2xl font-semibold">Create New Vault</h2>
+              <h2 className="font-display text-2xl font-semibold">Create a Safe</h2>
               <p className="mb-4 mt-2 text-sm text-slate-600">
-                Create a secure delivery vault to share with clients. Start with a stock demo pack.
+                Create a secure delivery safe to share with clients. Start with a stock demo pack.
               </p>
               <CreateVaultForm clients={safeClients} />
             </Card>

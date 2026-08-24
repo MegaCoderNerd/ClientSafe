@@ -56,7 +56,7 @@ export async function createProject(formData: FormData): Promise<ActionResult> {
   const session = await getServerSession(authOptions);
 
   if (!session?.user?.email) {
-    return { ok: false, error: "Authentication required to create a vault." };
+    return { ok: false, error: "Authentication required to create a safe." };
   }
 
   const clientEmail = String(formData.get("clientEmail") ?? "").trim().toLowerCase();
