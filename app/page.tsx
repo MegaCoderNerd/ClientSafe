@@ -27,6 +27,9 @@ const FEATURES = [
 ];
 
 export default async function HomePage() {
+  // #region agent log
+  fetch("http://127.0.0.1:7530/ingest/2c2c58bb-5602-46f9-b362-f532a1588821",{method:"POST",headers:{"Content-Type":"application/json","X-Debug-Session-Id":"18b56a"},body:JSON.stringify({sessionId:"18b56a",runId:"post-fix",hypothesisId:"G",location:"app/page.tsx:HomePage",message:"HomePage start",data:{hasNextAuthSecret:Boolean(process.env.NEXTAUTH_SECRET),hasNextAuthUrl:Boolean(process.env.NEXTAUTH_URL)},timestamp:Date.now()})}).catch(()=>{});
+  // #endregion
   const session = await getServerSession(authOptions);
   if (session?.user) {
     redirect("/dashboard");
