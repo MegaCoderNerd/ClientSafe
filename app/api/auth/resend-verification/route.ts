@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getAppOrigin } from "@/lib/supabase-env";
-import { supabaseAnon } from "@/lib/supabase-anon";
+import { getSupabaseAnon } from "@/lib/supabase-anon";
 
 export async function POST(req: Request) {
   try {
@@ -11,7 +11,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Email is required" }, { status: 400 });
     }
 
-    const { error } = await supabaseAnon.auth.resend({
+    const { error } = await getSupabaseAnon().auth.resend({
       type: "signup",
       email,
       options: {

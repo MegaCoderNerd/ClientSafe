@@ -4,7 +4,7 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import { ensureDemoWorkspace } from "@/lib/demo-data";
 import { ensureAppUserFromAuth } from "@/lib/ensure-app-user";
 import { findAuthUserByEmail } from "@/lib/supabase-auth-admin";
-import { supabaseAnon } from "@/lib/supabase-anon";
+import { getSupabaseAnon } from "@/lib/supabase-anon";
 import { supabase } from "@/lib/supabase";
 
 const DEMO_ACCOUNTS: Record<string, { id: string; name: string; password: string }> = {
@@ -138,7 +138,7 @@ export const authOptions: NextAuthOptions = {
             return user;
           }
 
-          const { data: authData, error: authError } = await supabaseAnon.auth.signInWithPassword({
+          const { data: authData, error: authError } = await getSupabaseAnon().auth.signInWithPassword({
             email,
             password,
           });

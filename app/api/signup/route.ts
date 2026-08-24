@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { ensureAppUserFromAuth } from "@/lib/ensure-app-user";
 import { findAuthUserByEmail, isAuthUserConfirmed } from "@/lib/supabase-auth-admin";
 import { getAppOrigin } from "@/lib/supabase-env";
-import { supabaseAnon } from "@/lib/supabase-anon";
+import { getSupabaseAnon } from "@/lib/supabase-anon";
 import { supabase } from "@/lib/supabase";
 
 async function existingEmailConflict(email: string) {
@@ -71,7 +71,7 @@ export async function POST(req: Request) {
       return existingEmailConflict(normalizedEmail);
     }
 
-    const { data, error } = await supabaseAnon.auth.signUp({
+    const { data, error } = await getSupabaseAnon().auth.signUp({
       email: normalizedEmail,
       password,
       options: {

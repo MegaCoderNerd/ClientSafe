@@ -26,7 +26,8 @@ export async function register() {
   console.error("[debug-18b56a]", JSON.stringify(payload));
   // #endregion
 
-  process.on("unhandledRejection", (reason) => {
+  if (process.env.NEXT_RUNTIME !== "edge") {
+    process.on("unhandledRejection", (reason) => {
     const err = reason instanceof Error ? reason : new Error(String(reason));
     const rejection = {
       sessionId: "18b56a",
@@ -50,5 +51,6 @@ export async function register() {
     }).catch(() => {});
     console.error("[debug-18b56a]", JSON.stringify(rejection));
     // #endregion
-  });
+    });
+  }
 }

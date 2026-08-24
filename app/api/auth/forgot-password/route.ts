@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getAppOrigin } from "@/lib/supabase-env";
-import { supabaseAnon } from "@/lib/supabase-anon";
+import { getSupabaseAnon } from "@/lib/supabase-anon";
 import { supabase } from "@/lib/supabase";
 
 export async function POST(req: Request) {
@@ -28,7 +28,7 @@ export async function POST(req: Request) {
       }
     }
 
-    const { error } = await supabaseAnon.auth.resetPasswordForEmail(email, { redirectTo });
+    const { error } = await getSupabaseAnon().auth.resetPasswordForEmail(email, { redirectTo });
     if (error) {
       console.error("/api/forgot-password:", error);
     }
