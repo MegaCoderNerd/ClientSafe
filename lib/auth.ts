@@ -8,17 +8,17 @@ import { getSupabaseAnon } from "@/lib/supabase-anon";
 import { supabase } from "@/lib/supabase";
 
 const DEMO_ACCOUNTS: Record<string, { id: string; name: string; password: string }> = {
-  "freelancer@clientvault.dev": {
+  "freelancer@clientsafe.dev": {
     id: "freelancer-demo",
     name: "Freelancer Demo",
     password: "demo123",
   },
-  "client@clientvault.dev": {
+  "client@clientsafe.dev": {
     id: "client-demo",
     name: "Client Demo",
     password: "demo123",
   },
-  "demo@clientvault.dev": {
+  "demo@clientsafe.dev": {
     id: "demo",
     name: "Demo User",
     password: "demo123",

@@ -1,4 +1,4 @@
--- ClientVault file storage for Vercel.
+-- ClientSafe file storage for Vercel.
 -- Run in the Supabase SQL editor (Storage + Auth enabled).
 -- vault-previews is public so watermarked images/videos can load in the browser.
 -- vault-private holds originals and extracted live demos; downloads go through the app.

@@ -7,7 +7,7 @@ export default function GuidePage() {
       <Link href="/dashboard" className="mb-6 inline-flex items-center text-accent hover:text-accent-hover">
         <span className="mr-2">←</span> Back to Dashboard
       </Link>
-      <h1 className="mb-6 font-display text-4xl font-semibold">How to Use ClientVault</h1>
+      <h1 className="mb-6 font-display text-4xl font-semibold">How to Use ClientSafe</h1>
 
       <div className="space-y-8">
         {/* Freelancer Section */}
@@ -35,7 +35,7 @@ export default function GuidePage() {
               <h3 className="text-lg font-semibold mb-2">3. Track Payments</h3>
               <p className="text-slate-600">
                 Monitor the status of each vault. When a client completes PayPal payment, the status changes to &quot;COMPLETED&quot;
-                and they can download the original file. You receive 90% of the listed price; ClientVault ledgers a 10% platform fee
+                and they can download the original file. You receive 90% of the listed price; ClientSafe ledgers a 10% platform fee
                 (PayPal&apos;s processing fee comes out of the platform share).
               </p>
             </div>
@@ -67,7 +67,7 @@ export default function GuidePage() {
               <h3 className="text-lg font-semibold mb-2">3. Complete Payment</h3>
               <p className="text-slate-600">
                 Once you&apos;re satisfied with the preview, pay the listed vault price on PayPal&apos;s hosted checkout.
-                Card details stay with PayPal. ClientVault takes a 10% platform fee and the freelancer receives 90%.
+                Card details stay with PayPal. ClientSafe takes a 10% platform fee and the freelancer receives 90%.
                 The vault unlocks only after PayPal confirms the capture.
               </p>
             </div>
@@ -139,14 +139,14 @@ export default function GuidePage() {
             <div>
               <p className="font-semibold mb-2">Is my payment information secure?</p>
               <p className="text-slate-600 text-sm">
-                Yes. Checkout happens on PayPal&apos;s hosted page, so card numbers never touch ClientVault servers.
+                Yes. Checkout happens on PayPal&apos;s hosted page, so card numbers never touch ClientSafe servers.
                 We only unlock a vault after PayPal verifies the payment capture.
               </p>
             </div>
             <div>
               <p className="font-semibold mb-2">How is the 10% platform fee handled?</p>
               <p className="text-slate-600 text-sm">
-                The client pays the listed vault price in full. ClientVault records 10% as the platform fee and 90% as the freelancer payout.
+                The client pays the listed vault price in full. ClientSafe records 10% as the platform fee and 90% as the freelancer payout.
                 Paying the freelancer out of that 90% is done from the dashboard later; it is not split automatically at checkout.
               </p>
             </div>

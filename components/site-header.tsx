@@ -32,13 +32,13 @@ export function SiteHeader() {
         <Link href="/" className="flex items-center gap-2 sm:gap-3">
           <Image
             src="/logo.webp"
-            alt="ClientVault logo"
+            alt="ClientSafe logo"
             width={36}
             height={36}
             className="h-8 w-8 object-contain sm:h-10 sm:w-10"
             quality={75}
           />
-          <span className="hidden font-display text-lg font-semibold sm:inline">ClientVault</span>
+          <span className="hidden font-display text-lg font-semibold sm:inline">ClientSafe</span>
         </Link>
       </div>
 

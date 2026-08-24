@@ -202,7 +202,7 @@ export async function createPayPalOrder(options: {
         },
       ],
       application_context: {
-        brand_name: "ClientVault",
+        brand_name: "ClientSafe",
         landing_page: "BILLING",
         shipping_preference: "NO_SHIPPING",
         user_action: "PAY_NOW",

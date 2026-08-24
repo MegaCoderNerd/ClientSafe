@@ -17,7 +17,7 @@ const FEATURES = [
   {
     step: "02",
     title: "Pay",
-    body: "Clients unlock the original on PayPal hosted checkout. Card details never touch ClientVault.",
+    body: "Clients unlock the original on PayPal hosted checkout. Card details never touch ClientSafe.",
   },
   {
     step: "03",
@@ -38,7 +38,7 @@ export default async function HomePage() {
       <div className="relative mx-auto flex min-h-[calc(100dvh-3.5rem)] max-w-6xl flex-col justify-center gap-8 px-4 py-8 pb-[max(1.5rem,env(safe-area-inset-bottom))] sm:min-h-[calc(100dvh-4rem)] sm:gap-12 sm:px-6 sm:py-16">
         <div className="grid items-center gap-8 md:grid-cols-2 md:gap-12">
           <div className="landing-enter max-w-xl md:max-w-none">
-            <p className="text-xs font-medium uppercase tracking-[0.22em] text-accent sm:text-sm">ClientVault</p>
+            <p className="text-xs font-medium uppercase tracking-[0.22em] text-accent sm:text-sm">ClientSafe</p>
             <h1 className="mt-3 font-display text-3xl font-semibold tracking-tight sm:text-4xl lg:text-5xl">
               Deliver work. Preview first. Unlock after payment.
             </h1>

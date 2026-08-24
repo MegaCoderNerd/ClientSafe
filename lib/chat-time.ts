@@ -1,4 +1,4 @@
-const STORAGE_KEY = "clientvault.user-timezone";
+const STORAGE_KEY = "clientsafe.user-timezone";
 
 export function getBrowserTimeZone() {
   try {

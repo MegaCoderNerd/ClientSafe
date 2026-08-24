@@ -99,7 +99,7 @@ export default function UpdatePasswordPage() {
     <div className="mx-auto flex min-h-[calc(100dvh-3.5rem)] max-w-md flex-col items-center p-6 pt-8 sm:min-h-[calc(100dvh-4rem)] sm:pt-12">
       <Card className="w-full p-6">
         <h1 className="font-display text-2xl font-semibold">Set a new password</h1>
-        <p className="mt-2 text-sm text-slate-600">Choose a new password for your ClientVault account.</p>
+        <p className="mt-2 text-sm text-slate-600">Choose a new password for your ClientSafe account.</p>
 
         <form onSubmit={onSubmit} className="mt-4 space-y-4">
           <label className="block text-sm">

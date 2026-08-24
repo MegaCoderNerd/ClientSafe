@@ -118,7 +118,7 @@ export function SignInForm({
             type="button"
             variant="secondary"
             disabled={loading}
-            onClick={() => handleLogin("freelancer@clientvault.dev", "demo123")}
+            onClick={() => handleLogin("freelancer@clientsafe.dev", "demo123")}
             className="w-full"
           >
             Freelancer Demo
@@ -127,7 +127,7 @@ export function SignInForm({
             type="button"
             variant="secondary"
             disabled={loading}
-            onClick={() => handleLogin("client@clientvault.dev", "demo123")}
+            onClick={() => handleLogin("client@clientsafe.dev", "demo123")}
             className="w-full"
           >
             Client Demo

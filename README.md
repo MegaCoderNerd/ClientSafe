@@ -1,6 +1,6 @@
-# ClientVault
+# ClientSafe
 
-ClientVault is a full-stack Next.js app for secure freelancer-to-client asset delivery with PayPal Checkout unlocks.
+ClientSafe is a full-stack Next.js app for secure freelancer-to-client asset delivery with PayPal Checkout unlocks.
 
 ## Tech Stack
 
@@ -66,7 +66,7 @@ Open `http://localhost:3000`.
 
 ## Demo Account
 
-- DEMO: `demo@clientvault.dev` / `demo123`
+- DEMO: `demo@clientsafe.dev` / `demo123`
 
 ## Core Routes
 

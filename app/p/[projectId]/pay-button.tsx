@@ -76,7 +76,7 @@ export function PayButton({
       <p className="text-sm text-slate-600">
         You pay <span className="font-medium text-slate-800">{money(priceCents, currency)}</span> on PayPal.
         The freelancer receives {freelancerPercent}% ({money(freelancerPayoutAmount, currency)}).
-        ClientVault keeps a {platformFeePercent}% platform fee ({money(platformFeeAmount, currency)}).
+        ClientSafe keeps a {platformFeePercent}% platform fee ({money(platformFeeAmount, currency)}).
       </p>
       {sandboxMode ? (
         <p className="text-xs text-amber-800">

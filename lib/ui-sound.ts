@@ -1,4 +1,4 @@
-const MUTE_KEY = "cv-ui-sound-muted";
+const MUTE_KEY = "cs-ui-sound-muted";
 const COOLDOWN_MS = 110;
 const MASTER_GAIN = 0.038;
 

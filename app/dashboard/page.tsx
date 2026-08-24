@@ -24,7 +24,7 @@ export default async function DashboardPage() {
     redirect("/auth/signin?callbackUrl=%2Fdashboard");
   }
 
-  if (session.user.email?.endsWith("@clientvault.dev")) {
+  if (session.user.email?.endsWith("@clientsafe.dev")) {
     await ensureDemoWorkspace();
   }
 

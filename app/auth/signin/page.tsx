@@ -26,7 +26,7 @@ export default async function SignInPage({
   return (
     <div className="mx-auto flex min-h-[calc(100dvh-3.5rem)] max-w-md flex-col items-center justify-start p-6 pt-8 sm:min-h-[calc(100dvh-4rem)] sm:pt-12">
       <Card className="w-full p-6">
-        <h1 className="font-display text-2xl font-semibold">Sign in to ClientVault</h1>
+        <h1 className="font-display text-2xl font-semibold">Sign in to ClientSafe</h1>
         <p className="mt-2 text-sm text-slate-600">Use a verified account or a demo login to test freelancer and client flows.</p>
         <SignInForm
           verified={firstQueryValue(params.verified) === "1"}

@@ -4,13 +4,13 @@ import { STOCK_ASSETS } from "@/lib/stock-assets";
 const DEMO_USERS = [
   {
     id: "freelancer-demo",
-    email: "freelancer@clientvault.dev",
+    email: "freelancer@clientsafe.dev",
     name: "Freelancer Demo",
     password: "demo123",
   },
   {
     id: "client-demo",
-    email: "client@clientvault.dev",
+    email: "client@clientsafe.dev",
     name: "Client Demo",
     password: "demo123",
   },
