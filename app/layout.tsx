@@ -36,7 +36,20 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const session = await getServerSession(authOptions);
+  // #region agent log
+  fetch("http://127.0.0.1:7530/ingest/2c2c58bb-5602-46f9-b362-f532a1588821",{method:"POST",headers:{"Content-Type":"application/json","X-Debug-Session-Id":"18b56a"},body:JSON.stringify({sessionId:"18b56a",runId:"pre-fix",hypothesisId:"C",location:"app/layout.tsx:RootLayout",message:"RootLayout start",data:{hasNextAuthSecret:Boolean(process.env.NEXTAUTH_SECRET),vercel:Boolean(process.env.VERCEL)},timestamp:Date.now()})}).catch(()=>{});
+  // #endregion
+  let session = null;
+  try {
+    session = await getServerSession(authOptions);
+  } catch (error) {
+    const err = error instanceof Error ? error : new Error(String(error));
+    // #region agent log
+    fetch("http://127.0.0.1:7530/ingest/2c2c58bb-5602-46f9-b362-f532a1588821",{method:"POST",headers:{"Content-Type":"application/json","X-Debug-Session-Id":"18b56a"},body:JSON.stringify({sessionId:"18b56a",runId:"pre-fix",hypothesisId:"C",location:"app/layout.tsx:getServerSession",message:"getServerSession threw",data:{errorMessage:err.message,stackHead:(err.stack??"").split("\n").slice(0,5).join(" | ")},timestamp:Date.now()})}).catch(()=>{});
+    console.error("[debug-18b56a] getServerSession threw", err.message);
+    // #endregion
+    throw error;
+  }
 
   return (
     <html lang="en" className={`${display.variable} ${body.variable}`}>
