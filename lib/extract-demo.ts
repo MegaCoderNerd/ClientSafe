@@ -1,6 +1,14 @@
 import { unzipSync } from "fflate";
-import { mkdir, rm, writeFile } from "fs/promises";
+import { rm } from "fs/promises";
 import path from "path";
+import { contentTypeFor } from "@/lib/file-delivery";
+import {
+  PRIVATE_BUCKET,
+  demoObjectPath,
+  demoObjectPrefix,
+  removeStoragePrefix,
+  uploadStorageBytes,
+} from "@/lib/object-storage";
 
 const DEMO_ROOT = path.resolve(process.cwd(), "storage", "demos");
 const MAX_UNCOMPRESSED = 5 * 1024 * 1024;
@@ -59,7 +67,10 @@ export function demoStorageRoot(assetId: string) {
 }
 
 export async function removeDemoStorage(assetId: string) {
-  await rm(demoStorageRoot(assetId), { recursive: true, force: true });
+  await Promise.all([
+    removeStoragePrefix(PRIVATE_BUCKET, demoObjectPrefix(assetId)),
+    rm(/* turbopackIgnore: true */ demoStorageRoot(assetId), { recursive: true, force: true }).catch(() => {}),
+  ]);
 }
 
 export async function extractDemoZip(assetId: string, zipBytes: Uint8Array) {
@@ -101,16 +112,23 @@ export async function extractDemoZip(assetId: string, zipBytes: Uint8Array) {
     throw new Error("Demo zip must include index.html.");
   }
 
-  const root = demoStorageRoot(assetId);
-  await mkdir(root, { recursive: true });
+  await removeDemoStorage(assetId);
 
-  for (const entry of renamed) {
-    const destination = path.resolve(root, entry.safe);
-    if (!destination.startsWith(root + path.sep) && destination !== root) {
-      throw new Error("Demo zip contains an unsafe path.");
-    }
-    await mkdir(path.dirname(destination), { recursive: true });
-    await writeFile(destination, unzipped[entry.original]);
+  try {
+    await Promise.all(
+      renamed.map((entry) => {
+        const objectPath = demoObjectPath(assetId, entry.safe);
+        if (!objectPath) throw new Error("Demo zip contains an unsafe path.");
+        return uploadStorageBytes(
+          { bucket: PRIVATE_BUCKET, path: objectPath },
+          unzipped[entry.original],
+          contentTypeFor(entry.safe),
+        );
+      }),
+    );
+  } catch (error) {
+    await removeDemoStorage(assetId);
+    throw error;
   }
 
   const index = renamed.find((entry) => entry.safe === "index.html") ?? renamed.find((entry) => entry.safe.endsWith("/index.html"));
@@ -124,4 +142,10 @@ export function resolveDemoFile(assetId: string, requestPath: string) {
   const resolved = path.resolve(root, relative);
   if (!resolved.startsWith(root + path.sep) && resolved !== root) return null;
   return resolved;
+}
+
+export function resolveDemoRelative(requestPath: string) {
+  const relative = posixJoin(...requestPath.split("/").filter(Boolean)).replace(/^\/+/, "") || "index.html";
+  if (relative.includes("..")) return null;
+  return relative;
 }

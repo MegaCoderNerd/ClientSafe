@@ -1,8 +1,16 @@
 import { createReadStream } from "fs";
-import { stat, unlink } from "fs/promises";
+import { readFile, stat, unlink } from "fs/promises";
 import path from "path";
 import { Readable } from "stream";
 import { NextResponse } from "next/server";
+import {
+  downloadStorageBytes,
+  fetchStorageObject,
+  isAppBucket,
+  parseStorageRef,
+  removeStorageObject,
+  type StorageRef,
+} from "@/lib/object-storage";
 
 const PUBLIC_ROOT = path.resolve(process.cwd(), "public");
 const STORAGE_ROOT = path.resolve(process.cwd(), "storage", "uploads");
@@ -23,6 +31,9 @@ export function contentTypeFor(filePath: string) {
   if (filePath.endsWith(".json")) return "application/json";
   if (filePath.endsWith(".woff")) return "font/woff";
   if (filePath.endsWith(".woff2")) return "font/woff2";
+  if (filePath.endsWith(".ttf")) return "font/ttf";
+  if (filePath.endsWith(".ico")) return "image/x-icon";
+  if (filePath.endsWith(".map")) return "application/json";
   return "application/octet-stream";
 }
 
@@ -46,33 +57,72 @@ export function resolveDeliverableFile(originalFileUrl: string) {
   return null;
 }
 
+export async function readOwnedBytes(url: string): Promise<Uint8Array | null> {
+  const localFile = resolveDeliverableFile(url);
+  if (localFile) {
+    return new Uint8Array(await readFile(/* turbopackIgnore: true */ localFile));
+  }
+  const ref = parseStorageRef(url);
+  if (!ref || !isAppBucket(ref.bucket)) return null;
+  return downloadStorageBytes(ref);
+}
+
 export async function removeOwnedUpload(url?: string | null) {
   if (!url || url.startsWith("/stock/")) return;
-  if (!url.startsWith("/uploads/") && !url.startsWith("/storage-uploads/")) return;
-  const localFile = resolveDeliverableFile(url);
-  if (!localFile) return;
-  await unlink(localFile).catch(() => {});
+  if (url.startsWith("/uploads/") || url.startsWith("/storage-uploads/")) {
+    const localFile = resolveDeliverableFile(url);
+    if (!localFile) return;
+    await unlink(/* turbopackIgnore: true */ localFile).catch(() => {});
+    return;
+  }
+  const ref = parseStorageRef(url);
+  if (!ref || !isAppBucket(ref.bucket)) return;
+  await removeStorageObject(ref);
 }
 
-function contentDisposition(fileName: string) {
+function contentDisposition(fileName: string, inline = false) {
   const fallback = fileName.replace(/[^\w.\-]+/g, "_") || "download";
-  return `attachment; filename="${fallback}"; filename*=UTF-8''${encodeURIComponent(fileName)}`;
+  const kind = inline ? "inline" : "attachment";
+  return `${kind}; filename="${fallback}"; filename*=UTF-8''${encodeURIComponent(fileName)}`;
 }
 
-export async function streamLocalFile(filePath: string, fileName: string) {
-  const fileStat = await stat(filePath);
-  const nodeStream = createReadStream(filePath);
+function deliveryHeaders(filePath: string, fileName: string, inline = false) {
+  return {
+    "Content-Type": contentTypeFor(filePath),
+    "Content-Disposition": contentDisposition(fileName, inline),
+    "Cache-Control": "private, no-store, no-cache, must-revalidate",
+    Pragma: "no-cache",
+    "X-Content-Type-Options": "nosniff",
+    "Accept-Ranges": "bytes",
+  };
+}
+
+export async function streamLocalFile(filePath: string, fileName: string, inline = false) {
+  const fileStat = await stat(/* turbopackIgnore: true */ filePath);
+  const nodeStream = createReadStream(/* turbopackIgnore: true */ filePath);
   const body = Readable.toWeb(nodeStream) as ReadableStream<Uint8Array>;
 
   return new NextResponse(body, {
     headers: {
-      "Content-Type": contentTypeFor(filePath),
+      ...deliveryHeaders(filePath, fileName, inline),
       "Content-Length": String(fileStat.size),
-      "Content-Disposition": contentDisposition(fileName),
-      "Cache-Control": "private, no-store, no-cache, must-revalidate",
-      "Pragma": "no-cache",
-      "X-Content-Type-Options": "nosniff",
-      "Accept-Ranges": "bytes",
     },
   });
+}
+
+export async function streamStorageFile(
+  ref: StorageRef,
+  fileName: string,
+  options?: { inline?: boolean; extraHeaders?: Record<string, string> },
+) {
+  const response = await fetchStorageObject(ref);
+  const headers = new Headers(deliveryHeaders(ref.path, fileName, options?.inline));
+  const length = response.headers.get("content-length");
+  if (length) headers.set("Content-Length", length);
+  if (options?.extraHeaders) {
+    for (const [key, value] of Object.entries(options.extraHeaders)) {
+      headers.set(key, value);
+    }
+  }
+  return new NextResponse(response.body, { status: 200, headers });
 }

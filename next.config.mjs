@@ -1,9 +1,34 @@
 /** @type {import('next').NextConfig} */
+
+function supabaseRemotePatterns() {
+  const patterns = [
+    {
+      protocol: "https",
+      hostname: "**.supabase.co",
+      pathname: "/storage/v1/object/public/**",
+    },
+  ];
+  const raw = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  if (!raw) return patterns;
+  try {
+    const url = new URL(raw.replace(/\/rest\/v1\/?$/, ""));
+    patterns.unshift({
+      protocol: url.protocol === "http:" ? "http" : "https",
+      hostname: url.hostname,
+      pathname: "/storage/v1/object/public/**",
+    });
+  } catch {
+    // ignore malformed env during local tooling
+  }
+  return patterns;
+}
+
 const nextConfig = {
   images: {
     formats: ["image/webp"],
     qualities: [75],
     minimumCacheTTL: 2678400,
+    remotePatterns: supabaseRemotePatterns(),
   },
   async headers() {
     return [

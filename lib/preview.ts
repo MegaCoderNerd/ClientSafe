@@ -5,7 +5,12 @@ export function isVideoUrl(url?: string | null) {
 
 export function isImageUrl(url?: string | null) {
   if (!url) return false;
-  return /\.(webp|png|jpe?g|gif|svg)(\?|$)/i.test(url) || url.startsWith("/uploads/previews/") || url.startsWith("/stock/");
+  return (
+    /\.(webp|png|jpe?g|gif|svg)(\?|$)/i.test(url) ||
+    url.startsWith("/uploads/previews/") ||
+    url.startsWith("/stock/") ||
+    url.includes("/storage/v1/object/public/")
+  );
 }
 
 export function createDemoPreviewLink(assetId: string, filePath = "index.html") {

@@ -23,3 +23,11 @@ export function getSupabaseAnonKey() {
 export function getAppOrigin() {
   return process.env.NEXTAUTH_URL?.replace(/\/$/, "") || "http://localhost:3000";
 }
+
+export function getServiceRoleKey() {
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!key) {
+    throw new Error("Missing SUPABASE_SERVICE_ROLE_KEY");
+  }
+  return key;
+}

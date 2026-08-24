@@ -1,13 +1,18 @@
 "use server";
 
 import { randomUUID } from "crypto";
-import { readFile } from "fs/promises";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { extractDemoZip, removeDemoStorage } from "@/lib/extract-demo";
-import { fetchDeliveryProjectById, isMissingColumnError } from "@/lib/delivery-project";
-import { removeOwnedUpload, resolveDeliverableFile } from "@/lib/file-delivery";
+import {
+  fetchDeliveryProjectById,
+  isMissingColumnError,
+  type DeleteVaultRow,
+  type UpdateVaultRow,
+} from "@/lib/delivery-project";
+import { readOwnedBytes, removeOwnedUpload } from "@/lib/file-delivery";
+import { isAllowedOriginalUrl, isAllowedPreviewUrl } from "@/lib/object-storage";
 import { getPlatformFeePercent, splitVaultPrice } from "@/lib/paypal";
 import { createDemoPreviewLink } from "@/lib/preview";
 import { STOCK_ASSETS } from "@/lib/stock-assets";
@@ -78,6 +83,19 @@ export async function createProject(formData: FormData): Promise<ActionResult> {
     return { ok: false, error: "Please provide valid vault and asset details." };
   }
 
+  if (!isAllowedOriginalUrl(originalFileUrl)) {
+    return { ok: false, error: "Invalid original file." };
+  }
+  if (previewUrl && !isAllowedPreviewUrl(previewUrl)) {
+    return { ok: false, error: "Invalid preview file." };
+  }
+  if (previewVideoUrl && !isAllowedPreviewUrl(previewVideoUrl)) {
+    return { ok: false, error: "Invalid preview video." };
+  }
+  if (demoZipUrl && !isAllowedOriginalUrl(demoZipUrl)) {
+    return { ok: false, error: "Invalid demo zip." };
+  }
+
   const freelancerLookup = resolveUserId(session.user);
   const clientLookup = supabase.from("User").select("id").eq("email", clientEmail).maybeSingle();
   const [{ freelancerId }, { data: client }] = await Promise.all([
@@ -136,17 +154,20 @@ export async function createProject(formData: FormData): Promise<ActionResult> {
   let resolvedDemoIndex = demoIndexUrl || null;
 
   if (demoZipUrl) {
-    const zipPath = resolveDeliverableFile(demoZipUrl);
-    if (!zipPath) {
-      await supabase.from("DeliveryProject").delete().eq("id", project.id);
-      return { ok: false, error: "Demo zip could not be read." };
-    }
     try {
-      const zipBytes = await readFile(zipPath);
+      const zipBytes = await readOwnedBytes(demoZipUrl);
+      if (!zipBytes) {
+        await supabase.from("DeliveryProject").delete().eq("id", project.id);
+        await removeOwnedUpload(demoZipUrl);
+        return { ok: false, error: "Demo zip could not be read." };
+      }
       const indexPath = await extractDemoZip(assetId, zipBytes);
       resolvedDemoIndex = createDemoPreviewLink(assetId, indexPath);
+      await removeOwnedUpload(demoZipUrl);
     } catch (demoError) {
       console.error("[createProject] demo extract failed", demoError);
+      await removeDemoStorage(assetId);
+      await removeOwnedUpload(demoZipUrl);
       await supabase.from("DeliveryProject").delete().eq("id", project.id);
       return {
         ok: false,
@@ -167,6 +188,7 @@ export async function createProject(formData: FormData): Promise<ActionResult> {
 
   if (assetError) {
     console.error("[createProject] asset insert failed", assetError);
+    await removeDemoStorage(assetId);
     await supabase.from("DeliveryProject").delete().eq("id", project.id);
     return { ok: false, error: publicError(assetError, "Failed to create asset") };
   }
@@ -177,12 +199,12 @@ export async function createProject(formData: FormData): Promise<ActionResult> {
 }
 
 async function extractUploadedDemo(assetId: string, demoZipUrl: string) {
-  const zipPath = resolveDeliverableFile(demoZipUrl);
-  if (!zipPath) {
+  const zipBytes = await readOwnedBytes(demoZipUrl);
+  if (!zipBytes) {
     throw new Error("Demo zip could not be read.");
   }
-  const zipBytes = await readFile(zipPath);
   const indexPath = await extractDemoZip(assetId, zipBytes);
+  await removeOwnedUpload(demoZipUrl);
   return createDemoPreviewLink(assetId, indexPath);
 }
 
@@ -230,7 +252,7 @@ export async function updateProject(formData: FormData): Promise<ActionResult> {
     return { ok: false, error: "Choose a client other than yourself." };
   }
 
-  const { data: project, error: projectError } = await fetchDeliveryProjectById(
+  const { data: project, error: projectError } = await fetchDeliveryProjectById<UpdateVaultRow>(
     projectId,
     "id, freelancerId, clientId, paymentStatus, price, checkoutStartedAt, asset:Asset(id, previewUrl, previewVideoUrl, demoIndexUrl, originalFileUrl)",
     "id, freelancerId, clientId, paymentStatus, price, asset:Asset(id, previewUrl, previewVideoUrl, demoIndexUrl, originalFileUrl)",
@@ -267,9 +289,23 @@ export async function updateProject(formData: FormData): Promise<ActionResult> {
 
   const nextPreviewUrl = previewUrl || asset.previewUrl;
   const nextOriginalUrl = originalFileUrl || asset.originalFileUrl;
+  const nextVideoUrl = previewVideoUrl || null;
 
-  if (!nextPreviewUrl && !previewVideoUrl) {
+  if (!nextPreviewUrl && !nextVideoUrl) {
     return { ok: false, error: "A preview image or video is required." };
+  }
+
+  if (nextOriginalUrl && !isAllowedOriginalUrl(nextOriginalUrl)) {
+    return { ok: false, error: "Invalid original file." };
+  }
+  if (nextPreviewUrl && !isAllowedPreviewUrl(nextPreviewUrl)) {
+    return { ok: false, error: "Invalid preview file." };
+  }
+  if (nextVideoUrl && !isAllowedPreviewUrl(nextVideoUrl)) {
+    return { ok: false, error: "Invalid preview video." };
+  }
+  if (demoZipUrl && !isAllowedOriginalUrl(demoZipUrl)) {
+    return { ok: false, error: "Invalid demo zip." };
   }
 
   if (demoIndexUrl && !demoZipUrl && demoIndexUrl !== asset.demoIndexUrl) {
@@ -358,7 +394,7 @@ export async function updateProject(formData: FormData): Promise<ActionResult> {
     .from("Asset")
     .update({
       previewUrl: nextPreviewUrl || "/stock/video-poster.svg",
-      previewVideoUrl: previewVideoUrl || null,
+      previewVideoUrl: nextVideoUrl,
       demoIndexUrl: resolvedDemoIndex,
       originalFileUrl: nextOriginalUrl,
     })
@@ -367,6 +403,24 @@ export async function updateProject(formData: FormData): Promise<ActionResult> {
   if (assetError) {
     console.error("[updateProject] asset update failed", assetError);
     return { ok: false, error: publicError(assetError, "Failed to update asset") };
+  }
+
+  if (asset.previewUrl && asset.previewUrl !== nextPreviewUrl) {
+    await removeOwnedUpload(asset.previewUrl);
+  }
+  if (asset.previewVideoUrl && asset.previewVideoUrl !== nextVideoUrl) {
+    await removeOwnedUpload(asset.previewVideoUrl);
+  }
+  if (asset.originalFileUrl && asset.originalFileUrl !== nextOriginalUrl) {
+    await removeOwnedUpload(asset.originalFileUrl);
+  }
+  if (
+    !demoZipUrl &&
+    asset.demoIndexUrl &&
+    asset.demoIndexUrl !== resolvedDemoIndex &&
+    asset.demoIndexUrl.startsWith(`/api/assets/${asset.id}/demo/`)
+  ) {
+    await removeDemoStorage(asset.id);
   }
 
   revalidatePath("/");
@@ -441,7 +495,7 @@ export async function deleteProject(formData: FormData): Promise<ActionResult> {
     return { ok: false, error: "Your account was not found. Sign out and sign in again." };
   }
 
-  const { data: project, error: projectError } = await fetchDeliveryProjectById(
+  const { data: project, error: projectError } = await fetchDeliveryProjectById<DeleteVaultRow>(
     projectId,
     "id, freelancerId, paymentStatus, paypalOrderId, checkoutStartedAt, asset:Asset(id, previewUrl, previewVideoUrl, originalFileUrl)",
     "id, freelancerId, paymentStatus, paypalOrderId, asset:Asset(id, previewUrl, previewVideoUrl, originalFileUrl)",
@@ -460,6 +514,7 @@ export async function deleteProject(formData: FormData): Promise<ActionResult> {
   }
 
   const expectedPayPalOrderId = project.paypalOrderId ?? null;
+  const vaultId = project.id;
 
   if (
     isCheckoutGraceActive({
@@ -477,14 +532,14 @@ export async function deleteProject(formData: FormData): Promise<ActionResult> {
 
   async function attemptDelete(useCheckoutGraceFilter: boolean) {
     let result = await deleteUnpaidVaultRow({
-      projectId: project.id,
+      projectId: vaultId,
       freelancerId,
       expectedPayPalOrderId,
       useCheckoutGraceFilter,
     });
     if (result.error && isMissingColumnError(result.error) && useCheckoutGraceFilter) {
       result = await deleteUnpaidVaultRow({
-        projectId: project.id,
+        projectId: vaultId,
         freelancerId,
         expectedPayPalOrderId,
         useCheckoutGraceFilter: false,
@@ -497,7 +552,7 @@ export async function deleteProject(formData: FormData): Promise<ActionResult> {
   try {
     let result = await attemptDelete(true);
     if (result.error?.code === "23503" && asset?.id) {
-      const { error: assetDeleteError } = await supabase.from("Asset").delete().eq("id", asset.id).eq("projectId", project.id);
+      const { error: assetDeleteError } = await supabase.from("Asset").delete().eq("id", asset.id).eq("projectId", vaultId);
       if (assetDeleteError) {
         return { ok: false, error: publicError(assetDeleteError, "Failed to delete vault files") };
       }
@@ -522,13 +577,13 @@ export async function deleteProject(formData: FormData): Promise<ActionResult> {
     const { data: latest } = await supabase
       .from("DeliveryProject")
       .select("paymentStatus")
-      .eq("id", project.id)
+      .eq("id", vaultId)
       .maybeSingle();
 
     if (!latest) {
       revalidatePath("/");
       revalidatePath("/dashboard");
-      return { ok: true, projectId: project.id };
+      return { ok: true, projectId: vaultId };
     }
     if (latest.paymentStatus !== "PENDING") {
       return { ok: false, error: "Paid vaults cannot be deleted." };
@@ -537,11 +592,11 @@ export async function deleteProject(formData: FormData): Promise<ActionResult> {
   }
 
   if (asset?.id) {
-    await cleanupDeletedVaultFiles(asset).catch(() => {});
+    await cleanupDeletedVaultFiles({ ...asset, id: asset.id }).catch(() => {});
   }
 
   revalidatePath("/");
   revalidatePath("/dashboard");
-  revalidatePath(`/p/${project.id}`);
-  return { ok: true, projectId: project.id };
+  revalidatePath(`/p/${vaultId}`);
+  return { ok: true, projectId: vaultId };
 }

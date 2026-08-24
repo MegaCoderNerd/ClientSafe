@@ -11,7 +11,7 @@ import { withDemoAccessToken } from "@/lib/demo-access";
 import { feesForStoredVault, getPayPalMode, paypalCaptureUserMessage } from "@/lib/paypal";
 import { firstQueryValue } from "@/lib/search-params";
 import { createProtectedDownloadLink, getPreviewAssetUrl } from "@/lib/storage";
-import { fetchDeliveryProjectById } from "@/lib/delivery-project";
+import { fetchDeliveryProjectById, type VaultPageRow } from "@/lib/delivery-project";
 import { getServerSession } from "next-auth";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
@@ -47,7 +47,7 @@ export default async function ClientPreviewPage({ params, searchParams }: Props)
     // שולף את נתוני הפרויקט, כולל נתוני הפרילנסר ונתוני הלקוח כדי שנוכל להציג את השם בצ'אט
     const vaultSelect =
         "id, title, description, price, currency, paymentStatus, freelancerId, clientId, platformFeePercent, platformFeeAmount, freelancerPayoutAmount, freelancer:User!freelancerId(name), client:User!clientId(name), asset:Asset(id, previewUrl, previewVideoUrl, demoIndexUrl, isUnlocked)";
-    const { data: projectData, error } = await fetchDeliveryProjectById(
+    const { data: projectData, error } = await fetchDeliveryProjectById<VaultPageRow>(
         projectId,
         `id, title, description, price, currency, paymentStatus, freelancerId, clientId, checkoutStartedAt, platformFeePercent, platformFeeAmount, freelancerPayoutAmount, freelancer:User!freelancerId(name), client:User!clientId(name), asset:Asset(id, previewUrl, previewVideoUrl, demoIndexUrl, isUnlocked)`,
         vaultSelect,
@@ -68,7 +68,7 @@ export default async function ClientPreviewPage({ params, searchParams }: Props)
     const freelancerData = Array.isArray(projectData.freelancer) ? projectData.freelancer[0] : projectData.freelancer;
     const clientData = Array.isArray(projectData.client) ? projectData.client[0] : projectData.client;
 
-    if (!assetData) {
+    if (!assetData?.id) {
         notFound();
     }
 

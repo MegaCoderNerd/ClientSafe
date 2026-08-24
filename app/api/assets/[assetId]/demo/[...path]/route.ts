@@ -1,7 +1,8 @@
 import { authOptions } from "@/lib/auth";
 import { verifyDemoAccessToken } from "@/lib/demo-access";
-import { resolveDemoFile } from "@/lib/extract-demo";
-import { contentTypeFor, streamLocalFile } from "@/lib/file-delivery";
+import { resolveDemoFile, resolveDemoRelative } from "@/lib/extract-demo";
+import { contentTypeFor, streamLocalFile, streamStorageFile } from "@/lib/file-delivery";
+import { PRIVATE_BUCKET, demoObjectPath } from "@/lib/object-storage";
 import { supabase } from "@/lib/supabase";
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
@@ -49,7 +50,28 @@ export async function GET(_request: Request, context: RouteContext) {
     }
   }
 
-  const relative = fileSegments.join("/") || "index.html";
+  const relative = resolveDemoRelative(fileSegments.join("/")) || "index.html";
+  const extraHeaders: Record<string, string> = {};
+  extraHeaders["Content-Type"] = contentTypeFor(relative);
+  extraHeaders["Content-Disposition"] = "inline";
+  extraHeaders["X-Content-Type-Options"] = "nosniff";
+  if (relative.endsWith(".html") || relative.endsWith(".htm")) {
+    extraHeaders["Content-Security-Policy"] = "sandbox allow-scripts";
+  }
+
+  const objectPath = demoObjectPath(assetId, relative);
+  if (objectPath) {
+    try {
+      return await streamStorageFile(
+        { bucket: PRIVATE_BUCKET, path: objectPath },
+        path.basename(relative),
+        { inline: true, extraHeaders },
+      );
+    } catch {
+      // Fall back to a locally extracted demo from older vaults.
+    }
+  }
+
   const filePath = resolveDemoFile(assetId, relative);
   if (!filePath) {
     return NextResponse.json({ error: "Invalid demo path" }, { status: 400 });
@@ -57,13 +79,10 @@ export async function GET(_request: Request, context: RouteContext) {
 
   try {
     const fileName = path.basename(filePath);
-    const response = await streamLocalFile(filePath, fileName);
+    const response = await streamLocalFile(filePath, fileName, true);
     const headers = new Headers(response.headers);
-    headers.set("Content-Type", contentTypeFor(filePath));
-    headers.set("Content-Disposition", "inline");
-    headers.set("X-Content-Type-Options", "nosniff");
-    if (filePath.endsWith(".html") || filePath.endsWith(".htm")) {
-      headers.set("Content-Security-Policy", "sandbox allow-scripts");
+    for (const [key, value] of Object.entries(extraHeaders)) {
+      headers.set(key, value);
     }
     return new NextResponse(response.body, { status: 200, headers });
   } catch {

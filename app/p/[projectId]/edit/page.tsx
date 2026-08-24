@@ -3,7 +3,7 @@ import { EditVaultForm } from "@/components/edit-vault-form";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { authOptions } from "@/lib/auth";
-import { fetchDeliveryProjectById } from "@/lib/delivery-project";
+import { fetchDeliveryProjectById, type EditVaultPageRow } from "@/lib/delivery-project";
 import { supabase } from "@/lib/supabase";
 import { getServerSession } from "next-auth";
 import { notFound, redirect } from "next/navigation";
@@ -23,7 +23,7 @@ export default async function EditVaultPage({ params }: Props) {
   }
 
   const [{ data: project }, { data: clients }] = await Promise.all([
-    fetchDeliveryProjectById(
+    fetchDeliveryProjectById<EditVaultPageRow>(
       projectId,
       "id, title, description, price, currency, paymentStatus, freelancerId, clientId, checkoutStartedAt, asset:Asset(previewUrl, previewVideoUrl, demoIndexUrl, originalFileUrl)",
       "id, title, description, price, currency, paymentStatus, freelancerId, clientId, asset:Asset(previewUrl, previewVideoUrl, demoIndexUrl, originalFileUrl)",
@@ -67,10 +67,10 @@ export default async function EditVaultPage({ params }: Props) {
               price: project.price,
               currency: project.currency,
               clientId: project.clientId,
-              previewUrl: asset.previewUrl,
-              previewVideoUrl: asset.previewVideoUrl,
-              demoIndexUrl: asset.demoIndexUrl,
-              originalFileUrl: asset.originalFileUrl,
+              previewUrl: asset.previewUrl ?? "",
+              previewVideoUrl: asset.previewVideoUrl ?? null,
+              demoIndexUrl: asset.demoIndexUrl ?? null,
+              originalFileUrl: asset.originalFileUrl ?? "",
             }}
           />
         </div>

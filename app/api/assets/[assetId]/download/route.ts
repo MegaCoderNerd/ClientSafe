@@ -1,5 +1,6 @@
 import { authOptions } from "@/lib/auth";
 import { resolveDeliverableFile, streamLocalFile } from "@/lib/file-delivery";
+import { isAppBucket, parseStorageRef } from "@/lib/object-storage";
 import { getStockAssetByOriginalUrl } from "@/lib/stock-assets";
 import { supabase } from "@/lib/supabase";
 import { getServerSession } from "next-auth";
@@ -60,6 +61,23 @@ export async function GET(request: Request, context: RouteContext) {
     } catch {
       return NextResponse.json({ error: "Asset file missing" }, { status: 404 });
     }
+  }
+
+  const storageRef = parseStorageRef(asset.originalFileUrl);
+  if (storageRef && isAppBucket(storageRef.bucket)) {
+    const stock = getStockAssetByOriginalUrl(asset.originalFileUrl);
+    const fileName = stock?.originalFileName ?? path.basename(storageRef.path);
+    const { data, error: signError } = await supabase.storage
+      .from(storageRef.bucket)
+      .createSignedUrl(storageRef.path, 60, { download: fileName });
+    if (signError || !data?.signedUrl) {
+      return NextResponse.json({ error: "Asset file missing" }, { status: 404 });
+    }
+    return NextResponse.redirect(data.signedUrl);
+  }
+
+  if (asset.originalFileUrl.includes("/storage/v1/")) {
+    return NextResponse.json({ error: "Asset file missing" }, { status: 404 });
   }
 
   const target = asset.originalFileUrl.startsWith("http")
