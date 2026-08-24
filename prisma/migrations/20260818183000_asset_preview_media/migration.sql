@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "Asset" ADD COLUMN IF NOT EXISTS "previewVideoUrl" TEXT;
+ALTER TABLE "Asset" ADD COLUMN IF NOT EXISTS "demoIndexUrl" TEXT;

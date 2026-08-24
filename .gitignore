@@ -42,3 +42,8 @@ next-env.d.ts
 
 # project resources
 project_resources/
+
+# user uploads
+/public/uploads
+/storage/uploads
+/storage/demos

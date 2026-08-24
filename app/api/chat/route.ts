@@ -4,6 +4,8 @@ import { getServerSession } from "next-auth";
 import { NextRequest, NextResponse } from "next/server";
 import { randomUUID } from "crypto";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions);
 
@@ -51,7 +53,11 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Failed to fetch messages" }, { status: 500 });
   }
 
-  return NextResponse.json(messages || []);
+  return NextResponse.json(messages || [], {
+    headers: {
+      "Cache-Control": "no-store, max-age=0",
+    },
+  });
 }
 
 export async function POST(req: NextRequest) {

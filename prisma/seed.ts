@@ -4,20 +4,20 @@ const prisma = new PrismaClient();
 
 async function main() {
   const freelancer = await prisma.user.upsert({
-    where: { email: "freelancer@clientvault.dev" },
+    where: { email: "freelancer@clientsafe.dev" },
     update: {},
     create: {
-      email: "freelancer@clientvault.dev",
+      email: "freelancer@clientsafe.dev",
       name: "Freelancer Demo",
       password: "demo123",
     },
   });
 
   const client = await prisma.user.upsert({
-    where: { email: "client@clientvault.dev" },
+    where: { email: "client@clientsafe.dev" },
     update: {},
     create: {
-      email: "client@clientvault.dev",
+      email: "client@clientsafe.dev",
       name: "Client Demo",
       password: "demo123",
     },
@@ -29,6 +29,14 @@ async function main() {
       paymentStatus: PaymentStatus.PENDING,
       freelancerId: freelancer.id,
       clientId: client.id,
+      asset: {
+        update: {
+          previewUrl: "/stock/landing-page/preview.webp",
+          demoIndexUrl: "/stock/landing-page/demo/index.html",
+          originalFileUrl: "/stock/landing-page/original.zip",
+          isUnlocked: false,
+        },
+      },
     },
     create: {
       id: "demo-locked-project",
@@ -41,8 +49,9 @@ async function main() {
       clientId: client.id,
       asset: {
         create: {
-          previewUrl: "https://placehold.co/1200x700?text=Watermarked+Preview",
-          originalFileUrl: "https://example.com/files/landing-page-source.zip",
+          previewUrl: "/stock/landing-page/preview.webp",
+          demoIndexUrl: "/stock/landing-page/demo/index.html",
+          originalFileUrl: "/stock/landing-page/original.zip",
           isUnlocked: false,
         },
       },
@@ -55,6 +64,13 @@ async function main() {
       paymentStatus: PaymentStatus.COMPLETED,
       freelancerId: freelancer.id,
       clientId: client.id,
+      asset: {
+        update: {
+          previewUrl: "/stock/brand-kit/preview.webp",
+          originalFileUrl: "/stock/brand-kit/original.zip",
+          isUnlocked: true,
+        },
+      },
     },
     create: {
       id: "demo-unlocked-project",
@@ -67,8 +83,8 @@ async function main() {
       clientId: client.id,
       asset: {
         create: {
-          previewUrl: "https://placehold.co/1200x700?text=Brand+Kit+Preview",
-          originalFileUrl: "https://example.com/files/brand-kit.zip",
+          previewUrl: "/stock/brand-kit/preview.webp",
+          originalFileUrl: "/stock/brand-kit/original.zip",
           isUnlocked: true,
         },
       },

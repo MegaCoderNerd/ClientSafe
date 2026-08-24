@@ -24,27 +24,37 @@ model User {
 }
 
 model DeliveryProject {
-  id            String        @id @default(cuid())
-  title         String
-  description   String
-  price         Int
-  currency      String
-  paymentStatus PaymentStatus @default(PENDING)
-  freelancerId  String
-  clientId      String
-  freelancer    User          @relation("FreelancerProjects", fields: [freelancerId], references: [id])
-  client        User          @relation("ClientProjects", fields: [clientId], references: [id])
-  asset         Asset?
-  chatMessages  ChatMessage[]
+  id                     String        @id @default(cuid())
+  title                  String
+  description            String
+  price                  Int
+  currency               String
+  paymentStatus          PaymentStatus @default(PENDING)
+  paypalOrderId          String?
+  paypalCaptureId        String?       @unique
+  platformFeePercent     Int           @default(10)
+  platformFeeAmount      Int?
+  freelancerPayoutAmount Int?
+  freelancerId           String
+  clientId               String
+  createdAt              DateTime      @default(now())
+  paidAt                 DateTime?
+  checkoutStartedAt      DateTime?
+  freelancer             User          @relation("FreelancerProjects", fields: [freelancerId], references: [id])
+  client                 User          @relation("ClientProjects", fields: [clientId], references: [id])
+  asset                  Asset?
+  chatMessages           ChatMessage[]
 }
 
 model Asset {
   id              String          @id @default(cuid())
   projectId       String          @unique
   previewUrl      String
+  previewVideoUrl String?
+  demoIndexUrl    String?
   originalFileUrl String
   isUnlocked      Boolean         @default(false)
-  project         DeliveryProject @relation(fields: [projectId], references: [id])
+  project         DeliveryProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
 }
 
 model ChatMessage {

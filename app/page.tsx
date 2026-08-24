@@ -1,213 +1,92 @@
-import { createProject } from "@/app/actions";
+import { AmbientBackdrop } from "@/components/ambient-backdrop";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { authOptions } from "@/lib/auth";
-import { createProtectedDownloadLink, getPreviewAssetUrl } from "@/lib/storage";
-import { supabase } from "@/lib/supabase";
 import { getServerSession } from "next-auth";
 import Image from "next/image";
-import Link from "next/link";
 import { redirect } from "next/navigation";
+
+export const dynamic = "force-dynamic";
+
+const FEATURES = [
+  {
+    step: "01",
+    title: "Preview",
+    body: "Share a watermarked look at the work so clients can review it before they pay.",
+  },
+  {
+    step: "02",
+    title: "Pay",
+    body: "Clients unlock the original on PayPal hosted checkout. Card details never touch ClientSafe.",
+  },
+  {
+    step: "03",
+    title: "Unlock",
+    body: "After a verified capture, the original files become available to download.",
+  },
+];
 
 export default async function HomePage() {
   const session = await getServerSession(authOptions);
-
-  if (!session?.user) {
-    return (
-        <main className="mx-auto flex min-h-[calc(100vh-64px)] max-w-4xl flex-col justify-start items-center gap-6 p-8 pt-20">
-          <h1 className="text-4xl font-bold text-center">ClientVault</h1>
-          <p className="text-lg text-slate-700 text-center max-w-prose">
-            Secure digital asset delivery with preview-before-payment protection. Create vaults, share preview links, and unlock originals after payment.
-          </p>
-
-          <div className="flex flex-wrap gap-3 mt-4">
-            <Link href="/auth/signin" className="rounded-md border px-4 py-2">
-              Sign In
-            </Link>
-            <Link href="/auth/signup" className="rounded-md bg-slate-900 px-4 py-2 text-white">
-              Sign Up
-            </Link>
-          </div>
-        </main>
-    );
+  if (session?.user) {
+    redirect("/dashboard");
   }
 
-  // Fetch all data for authenticated users using Supabase
-  const [
-    { data: clients },
-    { data: clientProjects },
-    { data: freelancerProjects }
-  ] = await Promise.all([
-    supabase
-        .from("User")
-        .select("id, name, email")
-        .neq("id", session.user.id)
-        .order("email", { ascending: true }),
-    supabase
-        .from("DeliveryProject")
-        .select("*, freelancer:User!freelancerId(*), asset:Asset(*)")
-        .eq("clientId", session.user.id)
-        .neq("freelancerId", session.user.id)
-        .order("title", { ascending: true }),
-    supabase
-        .from("DeliveryProject")
-        .select("*, client:User!clientId(*), asset:Asset(*)")
-        .eq("freelancerId", session.user.id)
-        .order("title", { ascending: true }),
-  ]);
-
-  // Fallbacks in case data is null
-  const safeClients = clients || [];
-  const safeClientProjects = clientProjects || [];
-  const safeFreelancerProjects = freelancerProjects || [];
-
   return (
-      <main className="mx-auto flex max-w-5xl flex-col gap-8 p-8">
-        {/* Welcome Section */}
-        <section className="rounded-xl border bg-white p-6 shadow-sm">
-          <h1 className="text-3xl font-bold">Welcome, {session.user.name ?? session.user.email}</h1>
-          <p className="mt-2 text-slate-600">Manage your vaults and deliveries in one place.</p>
-        </section>
+    <div className="relative overflow-hidden">
+      <AmbientBackdrop />
+      <div className="relative mx-auto flex min-h-[calc(100dvh-3.5rem)] max-w-6xl flex-col justify-center gap-8 px-4 py-8 pb-[max(1.5rem,env(safe-area-inset-bottom))] sm:min-h-[calc(100dvh-4rem)] sm:gap-12 sm:px-6 sm:py-16">
+        <div className="grid items-center gap-8 md:grid-cols-2 md:gap-12">
+          <div className="landing-enter max-w-xl md:max-w-none">
+            <p className="text-xs font-medium uppercase tracking-[0.22em] text-accent sm:text-sm">ClientSafe</p>
+            <h1 className="mt-3 font-display text-3xl font-semibold tracking-tight sm:text-4xl lg:text-5xl">
+              Deliver work. Preview first. Unlock after payment.
+            </h1>
+            <p className="mt-4 max-w-prose text-base text-slate-600 sm:text-lg">
+              Secure digital asset delivery with preview-before-payment protection. Create vaults, share preview
+              links, and unlock originals after payment.
+            </p>
+            <div className="mt-7">
+              <Button href="/auth/signup">Get started</Button>
+            </div>
+          </div>
 
-        {/* Create New Vault Section (Freelancer) */}
-        <section className="rounded-xl border bg-white p-6 shadow-sm">
-          <h2 className="text-2xl font-semibold mb-4">Create New Vault</h2>
-          <p className="text-sm text-slate-600 mb-4">Create a secure delivery vault to share with clients.</p>
-          <form action={createProject} className="grid gap-4 md:grid-cols-2">
-            <label className="flex flex-col gap-2 text-sm">
-              Client
-              {safeClients.length > 0 ? (
-                  <select name="clientId" required className="rounded-md border p-2">
-                    <option value="">Select a client...</option>
-                    {safeClients.map((client: any) => (
-                        <option key={client.id} value={client.id}>
-                          {client.name} ({client.email})
-                        </option>
-                    ))}
-                  </select>
-              ) : (
-                  <p className="rounded-md border bg-slate-50 p-2 text-xs text-slate-600">
-                    No other users found yet.
-                  </p>
-              )}
-            </label>
-            <label className="flex flex-col gap-2 text-sm">
-              Price (USD)
-              <input name="price" type="number" min="1" step="0.01" required className="rounded-md border p-2" />
-            </label>
-            <label className="flex flex-col gap-2 text-sm md:col-span-2">
-              Title
-              <input name="title" required className="rounded-md border p-2" placeholder="Vault title" />
-            </label>
-            <label className="flex flex-col gap-2 text-sm md:col-span-2">
-              Description
-              <textarea name="description" required className="rounded-md border p-2" rows={3} placeholder="Describe your vault" />
-            </label>
-            <label className="flex flex-col gap-2 text-sm">
-              Currency
-              <input name="currency" defaultValue="USD" required className="rounded-md border p-2" />
-            </label>
-            <label className="flex flex-col gap-2 text-sm">
-              Preview URL (watermarked)
-              <input name="previewUrl" type="url" required className="rounded-md border p-2" />
-            </label>
-            <label className="flex flex-col gap-2 text-sm md:col-span-2">
-              Original File URL (protected)
-              <input name="originalFileUrl" type="url" required className="rounded-md border p-2" />
-            </label>
-            <button
-                type="submit"
-                disabled={safeClients.length === 0}
-                className="rounded-md bg-slate-900 px-4 py-2 text-white disabled:cursor-not-allowed disabled:opacity-60 md:col-span-2 font-medium"
-            >
-              Create Vault
-            </button>
-          </form>
-        </section>
+          <div className="landing-enter landing-enter-delay-1">
+            <div className="overflow-hidden rounded-2xl border border-border/10 bg-white/40 shadow-card">
+              <div className="flex items-center gap-2 border-b border-border/10 px-3 py-2">
+                <span className="h-2 w-2 rounded-full bg-red-400/80" />
+                <span className="h-2 w-2 rounded-full bg-amber-400/80" />
+                <span className="h-2 w-2 rounded-full bg-emerald-400/80" />
+                <span className="ml-2 truncate text-[11px] text-slate-500">Preview before pay</span>
+              </div>
+              <div className="relative aspect-[4/3] max-h-[min(52vw,16rem)] w-full bg-slate-950 sm:max-h-none md:aspect-[16/10]">
+                <Image
+                  src="/stock/landing-page/preview.webp"
+                  alt="Watermarked preview of a client delivery"
+                  fill
+                  priority
+                  quality={75}
+                  className="object-cover"
+                  sizes="(max-width: 768px) 100vw, 560px"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
 
-        {/* Your Vaults Section (Freelancer Created) */}
-        <section className="rounded-xl border bg-white p-6 shadow-sm">
-          <h2 className="text-2xl font-semibold mb-4">Your Vaults</h2>
-          <p className="text-sm text-slate-600 mb-4">Vaults you created for your clients.</p>
-          {safeFreelancerProjects.length > 0 ? (
-              <ul className="space-y-4">
-                {safeFreelancerProjects.map((project: any) => {
-                  // Normalize data relationships (Supabase might return object or array)
-                  const clientData = Array.isArray(project.client) ? project.client[0] : project.client;
-
-                  return (
-                      <li key={project.id} className="rounded-md border p-4 hover:bg-slate-50 transition">
-                        <div className="flex justify-between items-start">
-                          <div className="flex-1">
-                            <p className="font-semibold text-lg">{project.title}</p>
-                            <p className="text-sm text-slate-600">Client: {clientData?.name} ({clientData?.email})</p>
-                            <p className="text-sm text-slate-600">{project.description}</p>
-                            <p className="text-sm font-medium mt-2">
-                              {project.price / 100} {project.currency} • Status: <span className={project.paymentStatus === "COMPLETED" ? "text-green-600" : "text-yellow-600"}>{project.paymentStatus}</span>
-                            </p>
-                          </div>
-                          <Link href={`/p/${project.id}`} className="ml-4 px-3 py-2 rounded-md bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 whitespace-nowrap">
-                            View
-                          </Link>
-                        </div>
-                      </li>
-                  );
-                })}
-              </ul>
-          ) : (
-              <p className="text-slate-600 text-sm">You haven't created any vaults yet. Start by filling the form above!</p>
-          )}
-        </section>
-
-        {/* Invited Vaults Section (Client Invitations) */}
-        <section className="rounded-xl border bg-white p-6 shadow-sm">
-          <h2 className="text-2xl font-semibold mb-4">Vaults Shared With You</h2>
-          <p className="text-sm text-slate-600 mb-4">Vaults that have been shared with you as a client.</p>
-          {safeClientProjects.length > 0 ? (
-              <ul className="space-y-4">
-                {safeClientProjects.map((project: any) => {
-                  // Normalize data relationships (Supabase might return object or array)
-                  const assetData = Array.isArray(project.asset) ? project.asset[0] : project.asset;
-                  const freelancerData = Array.isArray(project.freelancer) ? project.freelancer[0] : project.freelancer;
-
-                  const previewUrl = assetData ? getPreviewAssetUrl(assetData.previewUrl) : null;
-                  const protectedDownloadUrl = assetData ? createProtectedDownloadLink(assetData.id) : null;
-
-                  return (
-                      <li key={project.id} className="rounded-md border p-4 hover:bg-slate-50 transition">
-                        <div className="flex justify-between items-start mb-3">
-                          <div className="flex-1">
-                            <p className="font-semibold text-lg">{project.title}</p>
-                            <p className="text-sm text-slate-600">From: {freelancerData?.name} ({freelancerData?.email})</p>
-                            <p className="text-sm text-slate-600">{project.description}</p>
-                            <p className="text-sm font-medium mt-2">
-                              {project.price / 100} {project.currency} • Status: <span className={project.paymentStatus === "COMPLETED" ? "text-green-600" : "text-yellow-600"}>{project.paymentStatus}</span>
-                            </p>
-                          </div>
-                        </div>
-
-                        {previewUrl ? (
-                            <div className="relative aspect-video overflow-hidden rounded-lg border bg-slate-100 mb-3">
-                              <Image src={previewUrl} alt={`${project.title} preview`} fill className="object-cover" unoptimized />
-                            </div>
-                        ) : null}
-
-                        <div className="flex gap-2 flex-wrap">
-                          <Link href={`/p/${project.id}`} className="px-3 py-2 rounded-md bg-blue-600 text-white text-sm font-medium hover:bg-blue-700">
-                            View Preview
-                          </Link>
-                          {project.paymentStatus === "COMPLETED" && assetData?.isUnlocked && protectedDownloadUrl ? (
-                              <Link href={protectedDownloadUrl} className="px-3 py-2 rounded-md bg-green-600 text-white text-sm font-medium hover:bg-green-700">
-                                Download Original
-                              </Link>
-                          ) : null}
-                        </div>
-                      </li>
-                  );
-                })}
-              </ul>
-          ) : (
-              <p className="text-slate-600 text-sm">No vaults have been shared with you yet.</p>
-          )}
-        </section>
-      </main>
+        <ol className="landing-enter landing-enter-delay-2 grid w-full gap-3 sm:grid-cols-3">
+          {FEATURES.map((feature) => (
+            <li key={feature.title}>
+              <Card className="h-full p-4 sm:p-5">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-accent">
+                  {feature.step} · {feature.title}
+                </p>
+                <p className="mt-2 text-sm text-slate-600">{feature.body}</p>
+              </Card>
+            </li>
+          ))}
+        </ol>
+      </div>
+    </div>
   );
 }
