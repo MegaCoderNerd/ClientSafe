@@ -119,18 +119,24 @@ export function SignInForm({
             variant="secondary"
             disabled={loading}
             onClick={() => handleLogin("freelancer@clientsafe.dev", "demo123")}
-            className="w-full"
+            className="h-auto w-full py-3 hover:translate-y-0"
           >
-            Freelancer Demo
+            <span className="flex w-full flex-col items-start text-left">
+              <span>Freelancer demo</span>
+              <span className="text-xs font-normal text-slate-500">freelancer@clientsafe.dev</span>
+            </span>
           </Button>
           <Button
             type="button"
             variant="secondary"
             disabled={loading}
             onClick={() => handleLogin("client@clientsafe.dev", "demo123")}
-            className="w-full"
+            className="h-auto w-full py-3 hover:translate-y-0"
           >
-            Client Demo
+            <span className="flex w-full flex-col items-start text-left">
+              <span>Client demo</span>
+              <span className="text-xs font-normal text-slate-500">client@clientsafe.dev</span>
+            </span>
           </Button>
         </div>
       </div>

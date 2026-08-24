@@ -63,13 +63,13 @@ export function DashboardShell({
   }, [active, pathname, requested, router, searchParams]);
 
   return (
-    <div className="mx-auto flex max-w-5xl flex-col gap-6 p-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] sm:p-8">
+    <div className="mx-auto flex max-w-5xl min-w-0 flex-col gap-6 overflow-x-hidden p-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] sm:p-8">
       <Card className="p-4 sm:p-6">
-        <h1 className="font-display text-2xl font-semibold sm:text-3xl">Welcome, {userName}</h1>
+        <h1 className="font-display text-2xl font-semibold break-words sm:text-3xl">Welcome, {userName}</h1>
         <p className="mt-2 text-slate-600">Manage your vaults and deliveries in one place.</p>
       </Card>
 
-      <div role="tablist" aria-label="Dashboard sections" className="flex flex-wrap gap-2">
+      <div role="tablist" aria-label="Dashboard sections" className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
         {available.map((tab) => {
           const selected = tab === active;
           return (
@@ -80,7 +80,7 @@ export function DashboardShell({
               aria-selected={selected}
               variant={selected ? "primary" : "secondary"}
               size="sm"
-              className="flex-1 sm:flex-none"
+              className="h-auto min-h-10 w-full justify-center whitespace-normal px-2 py-2 text-center leading-tight hover:translate-y-0 sm:w-auto sm:min-h-0 sm:px-3"
               onClick={() => selectTab(tab)}
             >
               {TAB_LABELS[tab]}

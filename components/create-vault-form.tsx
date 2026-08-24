@@ -169,7 +169,7 @@ export function CreateVaultForm({ clients }: { clients: ClientOption[] }) {
 
       <fieldset className="md:col-span-2">
         <legend className="mb-2 text-sm font-medium">Asset source</legend>
-        <div className="mb-3 flex gap-2">
+        <div className="mb-3 flex flex-wrap gap-2">
           <Button
             type="button"
             size="sm"

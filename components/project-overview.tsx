@@ -100,9 +100,9 @@ export function ProjectOverview({ projects }: { projects: OverviewProject[] }) {
             const unpaid = project.paymentStatus === "PENDING";
             return (
               <li key={project.id} className="flex flex-col gap-3 p-4 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
-                <div>
-                  <p className="font-medium">{project.title}</p>
-                  <p className="text-sm text-slate-600">
+                <div className="min-w-0">
+                  <p className="font-medium break-words">{project.title}</p>
+                  <p className="text-sm text-slate-600 break-words">
                     {project.clientName} ({project.clientEmail})
                   </p>
                   <p className="mt-1 text-sm">

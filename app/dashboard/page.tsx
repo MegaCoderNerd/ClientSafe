@@ -97,11 +97,11 @@ export default async function DashboardPage() {
                       <li key={project.id} className="rounded-xl border border-border/10 bg-white/70 p-4 transition duration-150 hover:-translate-y-0.5 hover:shadow-md motion-reduce:hover:translate-y-0">
                         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                           <div className="min-w-0 flex-1">
-                            <p className="text-lg font-semibold">{project.title}</p>
-                            <p className="text-sm text-slate-600">
+                            <p className="text-lg font-semibold break-words">{project.title}</p>
+                            <p className="text-sm text-slate-600 break-words">
                               Client: {clientData?.name} ({clientData?.email})
                             </p>
-                            <p className="text-sm text-slate-600">{project.description}</p>
+                            <p className="text-sm text-slate-600 break-words">{project.description}</p>
                             <p className="mt-2 text-sm font-medium">
                               {project.price / 100} {project.currency} • Status:{" "}
                               <span className={project.paymentStatus === "COMPLETED" ? "text-green-600" : "text-yellow-600"}>
@@ -150,13 +150,13 @@ export default async function DashboardPage() {
 
                     return (
                       <li key={project.id} className="rounded-xl border border-border/10 bg-white/70 p-4 transition duration-150 hover:-translate-y-0.5 hover:shadow-md">
-                        <div className="mb-3 flex items-start justify-between">
-                          <div className="flex-1">
-                            <p className="text-lg font-semibold">{project.title}</p>
-                            <p className="text-sm text-slate-600">
+                        <div className="mb-3 flex min-w-0 items-start justify-between gap-3">
+                          <div className="min-w-0 flex-1">
+                            <p className="text-lg font-semibold break-words">{project.title}</p>
+                            <p className="text-sm text-slate-600 break-words">
                               From: {freelancerData?.name} ({freelancerData?.email})
                             </p>
-                            <p className="text-sm text-slate-600">{project.description}</p>
+                            <p className="text-sm text-slate-600 break-words">{project.description}</p>
                             <p className="mt-2 text-sm font-medium">
                               {project.price / 100} {project.currency} • Status:{" "}
                               <span className={project.paymentStatus === "COMPLETED" ? "text-green-600" : "text-yellow-600"}>

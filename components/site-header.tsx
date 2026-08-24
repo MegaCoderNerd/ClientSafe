@@ -5,6 +5,8 @@ import Image from "next/image";
 import { signOut, useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { useUiSound } from "@/components/ui-sound-provider";
+import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 
 function SpeakerIcon({ muted }: { muted: boolean }) {
   return (
@@ -22,28 +24,59 @@ function SpeakerIcon({ muted }: { muted: boolean }) {
   );
 }
 
+function MenuIcon({ open }: { open: boolean }) {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.75" aria-hidden>
+      {open ? (
+        <path d="M6 6l12 12M18 6 6 18" />
+      ) : (
+        <>
+          <path d="M4 7h16" />
+          <path d="M4 12h16" />
+          <path d="M4 17h16" />
+        </>
+      )}
+    </svg>
+  );
+}
+
 export function SiteHeader() {
   const { data: session } = useSession();
   const { muted, toggleMuted } = useUiSound();
+  const pathname = usePathname();
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  useEffect(() => {
+    setMenuOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    function onKey(event: KeyboardEvent) {
+      if (event.key === "Escape") setMenuOpen(false);
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [menuOpen]);
+
+  const signedIn = Boolean(session?.user);
 
   return (
-    <header className="sticky top-0 z-50 h-[calc(3.5rem+env(safe-area-inset-top))] border-b border-border/10 bg-canvas/92 sm:h-[calc(4rem+env(safe-area-inset-top))] sm:bg-canvas/70 sm:backdrop-blur-md">
-      <div className="absolute left-0 top-[env(safe-area-inset-top)] flex h-14 items-center pl-[max(0.75rem,env(safe-area-inset-left))] sm:h-16 sm:pl-4">
-        <Link href="/" className="flex items-center gap-2 sm:gap-3">
+    <header className="fixed inset-x-0 top-0 z-50 border-b border-border/10 bg-canvas/95 pt-[env(safe-area-inset-top)] sm:bg-canvas/80 sm:backdrop-blur-md">
+      <div className="mx-auto flex h-14 max-w-5xl items-center justify-between gap-2 px-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.75rem,env(safe-area-inset-right))] sm:h-16 sm:px-4">
+        <Link href="/" className="flex min-w-0 items-center gap-2 sm:gap-3">
           <Image
             src="/logo.webp"
             alt="ClientSafe logo"
             width={36}
             height={36}
-            className="h-8 w-8 object-contain sm:h-10 sm:w-10"
+            className="h-8 w-8 shrink-0 object-contain sm:h-10 sm:w-10"
             quality={75}
           />
-          <span className="hidden font-display text-lg font-semibold sm:inline">ClientSafe</span>
+          <span className="truncate font-display text-base font-semibold sm:text-lg">ClientSafe</span>
         </Link>
-      </div>
 
-      <div className="absolute right-0 top-[env(safe-area-inset-top)] flex h-14 items-center pr-[max(0.75rem,env(safe-area-inset-right))] sm:h-16 sm:pr-4">
-        <nav className="flex items-center gap-1.5 sm:gap-2">
+        <div className="flex shrink-0 items-center gap-1 sm:gap-2">
           <Button
             type="button"
             variant="ghost"
@@ -57,32 +90,82 @@ export function SiteHeader() {
           >
             <SpeakerIcon muted={muted} />
           </Button>
-          {session?.user ? (
+
+          <nav className="hidden items-center gap-2 sm:flex">
+            <Button href="/guide" variant="secondary" size="sm">
+              Guide
+            </Button>
+            {signedIn ? (
+              <>
+                <Button href="/dashboard" variant="ghost" size="sm">
+                  Dashboard
+                </Button>
+                <Button type="button" variant="danger" size="sm" onClick={() => signOut({ callbackUrl: "/" })}>
+                  Log Out
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button href="/auth/signin" variant="secondary" size="sm">
+                  Sign In
+                </Button>
+                <Button href="/auth/signup" size="sm">
+                  Sign Up
+                </Button>
+              </>
+            )}
+          </nav>
+
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            className="px-2 sm:hidden"
+            aria-expanded={menuOpen}
+            aria-controls="mobile-nav"
+            aria-label={menuOpen ? "Close menu" : "Open menu"}
+            onClick={() => setMenuOpen((open) => !open)}
+            silent
+          >
+            <MenuIcon open={menuOpen} />
+          </Button>
+        </div>
+      </div>
+
+      {menuOpen ? (
+        <nav
+          id="mobile-nav"
+          className="flex flex-col gap-2 border-t border-border/10 bg-canvas px-[max(0.75rem,env(safe-area-inset-left))] py-3 pr-[max(0.75rem,env(safe-area-inset-right))] sm:hidden"
+        >
+          <Button href="/guide" variant="secondary" className="w-full justify-center">
+            Guide
+          </Button>
+          {signedIn ? (
             <>
-              <Button href="/dashboard" variant="ghost" size="sm">
+              <Button href="/dashboard" variant="ghost" className="w-full justify-center">
                 Dashboard
               </Button>
-              <Button href="/guide" variant="secondary" size="sm" className="hidden sm:inline-flex">
-                Guide
-              </Button>
-              <Button type="button" variant="danger" size="sm" onClick={() => signOut({ callbackUrl: "/" })}>
+              <Button
+                type="button"
+                variant="danger"
+                className="w-full justify-center"
+                onClick={() => signOut({ callbackUrl: "/" })}
+              >
                 Log Out
               </Button>
             </>
           ) : (
             <>
-              <Button href="/auth/signin" variant="secondary" size="sm">
+              <Button href="/auth/signin" variant="secondary" className="w-full justify-center">
                 Sign In
               </Button>
-              <Button href="/auth/signup" size="sm">
+              <Button href="/auth/signup" className="w-full justify-center">
                 Sign Up
               </Button>
             </>
           )}
         </nav>
-      </div>
-
-      <div className="mx-auto h-[calc(3.5rem+env(safe-area-inset-top))] max-w-5xl sm:h-[calc(4rem+env(safe-area-inset-top))]" />
+      ) : null}
     </header>
   );
 }
