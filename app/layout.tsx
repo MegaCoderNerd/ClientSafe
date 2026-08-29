@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import { Fraunces, Plus_Jakarta_Sans } from "next/font/google";
+import { headers } from "next/headers";
 import "./globals.css";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { getAppOrigin } from "@/lib/supabase-env";
 import { Providers } from "./providers";
 import { SiteHeader } from "@/components/site-header";
 import { MotionPause } from "@/components/motion-pause";
@@ -21,13 +23,23 @@ const body = Plus_Jakarta_Sans({
   weight: ["400", "500", "600", "700"],
 });
 
-export const metadata: Metadata = {
-  title: "ClientSafe",
-  description: "Secure digital asset delivery for freelancers and clients.",
-  icons: {
-    icon: "/favicon.ico",
-  },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  let origin = getAppOrigin();
+  try {
+    const headerStore = await headers();
+    origin = getAppOrigin({ headers: headerStore });
+  } catch {
+    // Build or non-request context: fall back to env / Vercel URLs.
+  }
+  return {
+    metadataBase: new URL(origin),
+    title: "ClientSafe",
+    description: "Secure digital asset delivery for freelancers and clients.",
+    icons: {
+      icon: "/favicon.ico",
+    },
+  };
+}
 
 export const dynamic = "force-dynamic";
 

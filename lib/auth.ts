@@ -5,7 +5,10 @@ import { ensureDemoWorkspace } from "@/lib/demo-data";
 import { ensureAppUserFromAuth } from "@/lib/ensure-app-user";
 import { findAuthUserByEmail } from "@/lib/supabase-auth-admin";
 import { getSupabaseAnon } from "@/lib/supabase-anon";
+import { sanitizeDeployedAuthUrl } from "@/lib/supabase-env";
 import { supabase } from "@/lib/supabase";
+
+sanitizeDeployedAuthUrl();
 
 const DEMO_ACCOUNTS: Record<string, { id: string; name: string; password: string }> = {
   "freelancer@clientsafe.dev": {

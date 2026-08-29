@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { ensureAppUserFromAuth } from "@/lib/ensure-app-user";
 import { findAuthUserByEmail, isAuthUserConfirmed } from "@/lib/supabase-auth-admin";
-import { getAppOrigin } from "@/lib/supabase-env";
+import { getAppUrl } from "@/lib/supabase-env";
 import { getSupabaseAnon } from "@/lib/supabase-anon";
 import { supabase } from "@/lib/supabase";
 
@@ -54,7 +54,6 @@ export async function POST(req: Request) {
     }
 
     const normalizedEmail = email.trim().toLowerCase();
-    const origin = getAppOrigin();
 
     const { data: existing, error: lookupError } = await supabase
       .from("User")
@@ -76,7 +75,7 @@ export async function POST(req: Request) {
       password,
       options: {
         data: { name: name.trim() },
-        emailRedirectTo: `${origin}/auth/callback`,
+        emailRedirectTo: getAppUrl("/auth/callback", req),
       },
     });
 

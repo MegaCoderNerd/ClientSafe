@@ -2,6 +2,7 @@ import { authOptions } from "@/lib/auth";
 import { resolveDeliverableFile, streamLocalFile } from "@/lib/file-delivery";
 import { isAppBucket, parseStorageRef } from "@/lib/object-storage";
 import { getStockAssetByOriginalUrl } from "@/lib/stock-assets";
+import { getAppUrl } from "@/lib/supabase-env";
 import { supabase } from "@/lib/supabase";
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
@@ -82,7 +83,7 @@ export async function GET(request: Request, context: RouteContext) {
 
   const target = asset.originalFileUrl.startsWith("http")
     ? asset.originalFileUrl
-    : new URL(asset.originalFileUrl, request.url).toString();
+    : getAppUrl(asset.originalFileUrl, request);
 
   return NextResponse.redirect(target);
 }

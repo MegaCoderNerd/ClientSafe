@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getAppOrigin } from "@/lib/supabase-env";
+import { getAppUrl } from "@/lib/supabase-env";
 import { getSupabaseAnon } from "@/lib/supabase-anon";
 import { supabase } from "@/lib/supabase";
 
@@ -12,8 +12,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Email is required" }, { status: 400 });
     }
 
-    const origin = getAppOrigin();
-    const redirectTo = `${origin}/auth/callback?next=/auth/update-password`;
+    const redirectTo = getAppUrl("/auth/callback?next=/auth/update-password", req);
 
     const { data: appUser } = await supabase.from("User").select("id, email").eq("email", email).maybeSingle();
     if (appUser) {

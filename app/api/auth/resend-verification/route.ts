@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getAppOrigin } from "@/lib/supabase-env";
+import { getAppUrl } from "@/lib/supabase-env";
 import { getSupabaseAnon } from "@/lib/supabase-anon";
 
 export async function POST(req: Request) {
@@ -15,7 +15,7 @@ export async function POST(req: Request) {
       type: "signup",
       email,
       options: {
-        emailRedirectTo: `${getAppOrigin()}/auth/callback`,
+        emailRedirectTo: getAppUrl("/auth/callback", req),
       },
     });
 

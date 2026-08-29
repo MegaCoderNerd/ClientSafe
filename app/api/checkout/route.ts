@@ -11,7 +11,7 @@ import {
   isCompletedPayPalOrder,
   PayPalApiError,
 } from "@/lib/paypal";
-import { getAppOrigin } from "@/lib/supabase-env";
+import { getAppUrl } from "@/lib/supabase-env";
 import { supabase } from "@/lib/supabase";
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
@@ -212,14 +212,13 @@ export async function POST(request: Request) {
       }
     }
 
-    const origin = request.headers.get("origin")?.replace(/\/$/, "") || getAppOrigin();
     const order = await createPayPalOrder({
       projectId: vault.id,
       title: vault.title,
       currency: vault.currency,
       amountCents: vault.price,
-      returnUrl: `${origin}/p/${vault.id}`,
-      cancelUrl: `${origin}/p/${vault.id}?canceled=true`,
+      returnUrl: getAppUrl(`/p/${vault.id}`, request),
+      cancelUrl: getAppUrl(`/p/${vault.id}?canceled=true`, request),
     });
 
     const approveUrl = getPayPalApproveUrl(order);
