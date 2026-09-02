@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
+import { sendConfirmationEmail } from "@/lib/auth-mail";
 import { ensureAppUserFromAuth } from "@/lib/ensure-app-user";
+import { isMailConfigured } from "@/lib/mail";
 import { findAuthUserByEmail, isAuthUserConfirmed } from "@/lib/supabase-auth-admin";
-import { getAppUrl } from "@/lib/supabase-env";
-import { getSupabaseAnon } from "@/lib/supabase-anon";
 import { supabase } from "@/lib/supabase";
 
 async function existingEmailConflict(email: string) {
@@ -55,6 +55,13 @@ export async function POST(req: Request) {
 
     const normalizedEmail = email.trim().toLowerCase();
 
+    if (!isMailConfigured() && (process.env.VERCEL || process.env.NODE_ENV === "production")) {
+      return NextResponse.json(
+        { error: "Email sending is not configured. Set MAIL_FROM and RESEND_API_KEY (or SMTP) on the host." },
+        { status: 500 },
+      );
+    }
+
     const { data: existing, error: lookupError } = await supabase
       .from("User")
       .select("id")
@@ -70,17 +77,18 @@ export async function POST(req: Request) {
       return existingEmailConflict(normalizedEmail);
     }
 
-    const { data, error } = await getSupabaseAnon().auth.signUp({
+    const { data, error } = await supabase.auth.admin.createUser({
       email: normalizedEmail,
       password,
-      options: {
-        data: { name: name.trim() },
-        emailRedirectTo: getAppUrl("/auth/callback", req),
-      },
+      email_confirm: false,
+      user_metadata: { name: name.trim() },
     });
 
     if (error) {
       console.error("/api/signup auth error:", error);
+      if (error.message.toLowerCase().includes("already")) {
+        return existingEmailConflict(normalizedEmail);
+      }
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
 
@@ -88,14 +96,25 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Could not create account" }, { status: 500 });
     }
 
-    if (data.user.identities && data.user.identities.length === 0) {
-      return existingEmailConflict(normalizedEmail);
-    }
-
     const appUser = await ensureAppUserFromAuth(data.user);
     if (!appUser) {
       return NextResponse.json(
         { error: "Account was created but could not be saved. Try resending the confirmation email." },
+        { status: 500 },
+      );
+    }
+
+    try {
+      await sendConfirmationEmail(req, { id: data.user.id, email: normalizedEmail });
+    } catch (mailError) {
+      console.error("/api/signup mail error:", mailError);
+      return NextResponse.json(
+        {
+          success: true,
+          needsVerification: true,
+          canResend: true,
+          error: "Account created, but the confirmation email could not be sent. Use Resend.",
+        },
         { status: 500 },
       );
     }

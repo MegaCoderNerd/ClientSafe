@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { getAppUrl } from "@/lib/supabase-env";
-import { getSupabaseAnon } from "@/lib/supabase-anon";
+import { sendConfirmationEmail } from "@/lib/auth-mail";
+import { findAuthUserByEmail, isAuthUserConfirmed } from "@/lib/supabase-auth-admin";
 
 export async function POST(req: Request) {
   try {
@@ -11,18 +11,22 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Email is required" }, { status: 400 });
     }
 
-    const { error } = await getSupabaseAnon().auth.resend({
-      type: "signup",
-      email,
-      options: {
-        emailRedirectTo: getAppUrl("/auth/callback", req),
-      },
-    });
-
-    if (error) {
-      console.error("/api/auth/resend-verification:", error);
-      return NextResponse.json({ error: error.message }, { status: 400 });
+    const user = await findAuthUserByEmail(email);
+    if (!user?.id) {
+      return NextResponse.json({
+        success: true,
+        message: "If that email needs verification, we sent a link.",
+      });
     }
+
+    if (isAuthUserConfirmed(user)) {
+      return NextResponse.json({
+        success: true,
+        message: "This email is already verified. You can sign in.",
+      });
+    }
+
+    await sendConfirmationEmail(req, { id: user.id, email });
 
     return NextResponse.json({
       success: true,
@@ -30,6 +34,6 @@ export async function POST(req: Request) {
     });
   } catch (error) {
     console.error("/api/auth/resend-verification error:", error);
-    return NextResponse.json({ error: "Server error" }, { status: 500 });
+    return NextResponse.json({ error: "Could not send verification email" }, { status: 500 });
   }
 }

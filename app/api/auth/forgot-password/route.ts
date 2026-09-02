@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { getAppUrl } from "@/lib/supabase-env";
-import { getSupabaseAnon } from "@/lib/supabase-anon";
+import { sendPasswordResetEmail } from "@/lib/auth-mail";
+import { findAuthUserByEmail } from "@/lib/supabase-auth-admin";
 import { supabase } from "@/lib/supabase";
 
 export async function POST(req: Request) {
@@ -12,7 +12,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Email is required" }, { status: 400 });
     }
 
-    const redirectTo = getAppUrl("/auth/callback?next=/auth/update-password", req);
+    const generic = {
+      success: true,
+      message: "If that email is registered, we sent a reset link.",
+    };
 
     const { data: appUser } = await supabase.from("User").select("id, email").eq("email", email).maybeSingle();
     if (appUser) {
@@ -27,15 +30,18 @@ export async function POST(req: Request) {
       }
     }
 
-    const { error } = await getSupabaseAnon().auth.resetPasswordForEmail(email, { redirectTo });
-    if (error) {
-      console.error("/api/forgot-password:", error);
+    const authUser = await findAuthUserByEmail(email);
+    if (!authUser?.id) {
+      return NextResponse.json(generic);
     }
 
-    return NextResponse.json({
-      success: true,
-      message: "If that email is registered, we sent a reset link.",
-    });
+    try {
+      await sendPasswordResetEmail(req, { id: authUser.id, email });
+    } catch (mailError) {
+      console.error("/api/forgot-password mail:", mailError);
+    }
+
+    return NextResponse.json(generic);
   } catch (error) {
     console.error("/api/forgot-password error:", error);
     return NextResponse.json({ error: "Server error" }, { status: 500 });

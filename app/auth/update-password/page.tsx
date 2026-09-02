@@ -11,6 +11,7 @@ export default function UpdatePasswordPage() {
   const router = useRouter();
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
+  const [appToken, setAppToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -20,6 +21,13 @@ export default function UpdatePasswordPage() {
 
     async function prepare() {
       const query = new URLSearchParams(window.location.search);
+      const token = query.get("token");
+      if (token) {
+        setAppToken(token);
+        setReady(true);
+        return;
+      }
+
       const code = query.get("code");
       const tokenHash = query.get("token_hash");
       const type = query.get("type") as EmailOtpType | null;
@@ -83,6 +91,28 @@ export default function UpdatePasswordPage() {
 
     setLoading(true);
     setError(null);
+
+    if (appToken) {
+      try {
+        const response = await fetch("/api/auth/set-password", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token: appToken, password }),
+        });
+        const data = (await response.json()) as { error?: string };
+        setLoading(false);
+        if (!response.ok) {
+          setError(data.error || "Could not update password");
+          return;
+        }
+        router.push("/auth/signin?reset=1");
+      } catch {
+        setLoading(false);
+        setError("Could not update password");
+      }
+      return;
+    }
+
     const supabase = createClient();
     const { error: updateError } = await supabase.auth.updateUser({ password });
     setLoading(false);
