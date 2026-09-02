@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { sendConfirmationEmail } from "@/lib/auth-mail";
 import { ensureAppUserFromAuth } from "@/lib/ensure-app-user";
-import { isMailConfigured } from "@/lib/mail";
+import { describeMailError, isMailConfigured } from "@/lib/mail";
 import { findAuthUserByEmail, isAuthUserConfirmed } from "@/lib/supabase-auth-admin";
 import { supabase } from "@/lib/supabase";
 
@@ -116,7 +116,7 @@ export async function POST(req: Request) {
           success: true,
           needsVerification: true,
           canResend: true,
-          error: "Account created, but the confirmation email could not be sent. Check SMTP settings on Vercel.",
+          error: `Account created, but the confirmation email could not be sent. ${describeMailError(mailError)}`,
         },
         { status: 500 },
       );

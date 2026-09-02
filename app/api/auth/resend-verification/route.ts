@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { sendConfirmationEmail } from "@/lib/auth-mail";
+import { describeMailError } from "@/lib/mail";
 import { findAuthUserByEmail, isAuthUserConfirmed } from "@/lib/supabase-auth-admin";
 
 export const runtime = "nodejs";
@@ -37,6 +38,6 @@ export async function POST(req: Request) {
     });
   } catch (error) {
     console.error("/api/auth/resend-verification error:", error);
-    return NextResponse.json({ error: "Could not send verification email" }, { status: 500 });
+    return NextResponse.json({ error: describeMailError(error) }, { status: 500 });
   }
 }
