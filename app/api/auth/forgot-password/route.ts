@@ -3,6 +3,9 @@ import { sendPasswordResetEmail } from "@/lib/auth-mail";
 import { findAuthUserByEmail } from "@/lib/supabase-auth-admin";
 import { supabase } from "@/lib/supabase";
 
+export const runtime = "nodejs";
+export const maxDuration = 30;
+
 export async function POST(req: Request) {
   try {
     const body = await req.json();

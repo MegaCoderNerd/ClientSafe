@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import { sendConfirmationEmail } from "@/lib/auth-mail";
 import { findAuthUserByEmail, isAuthUserConfirmed } from "@/lib/supabase-auth-admin";
 
+export const runtime = "nodejs";
+export const maxDuration = 30;
+
 export async function POST(req: Request) {
   try {
     const body = await req.json();

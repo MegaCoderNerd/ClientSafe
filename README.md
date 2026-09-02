@@ -32,7 +32,7 @@ ClientSafe is a full-stack Next.js app for secure freelancer-to-client asset del
    - `PLATFORM_FEE_PERCENT` (`10`)
    - `NEXTAUTH_SECRET`
    - `NEXTAUTH_URL` (`http://localhost:3000` locally only — never copy this value into Vercel)
-   - `MAIL_FROM` and `RESEND_API_KEY` (or `SMTP_HOST`) so confirmation and reset emails are sent by the app, not Supabase
+   - `SMTP_HOST`, `SMTP_USER`, and `SMTP_PASSWORD` so confirmation emails are sent by the Vercel server (Gmail app password works; a `vercel.app` From address will not)
 
 ## Prisma Migration & Seed
 
@@ -145,7 +145,7 @@ When the app is on a stable HTTPS host (Vercel, your domain, etc.), create a **n
    - `PAYPAL_MODE=live` only after you have an Israeli PayPal Business account and are ready to take real payments
    - `NEXTAUTH_URL=https://your-domain` (no trailing slash). Do not set this to `http://localhost:3000` on Vercel.
    - Optional: `NEXT_PUBLIC_SITE_URL=https://your-domain` if you want a canonical origin. The app also infers the current host from Vercel/`x-forwarded-host`.
-   - `MAIL_FROM` and `RESEND_API_KEY` (or SMTP). Confirmation and password-reset emails are sent by the app, not Supabase.
+   - `SMTP_HOST`, `SMTP_USER`, `SMTP_PASSWORD` (Gmail: `smtp.gmail.com`, port `465`). Confirmation mail is sent by the Vercel server. Do not use a `*.vercel.app` From address.
    - Keep **Confirm email** enabled in Supabase Authentication settings so new accounts stay locked until they click the app's confirmation link.
    - `PAYPAL_WEBHOOK_ID` from the webhook you create in the next step
 

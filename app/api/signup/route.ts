@@ -40,6 +40,9 @@ async function existingEmailConflict(email: string) {
   );
 }
 
+export const runtime = "nodejs";
+export const maxDuration = 30;
+
 export async function POST(req: Request) {
   try {
     const body = await req.json();
@@ -57,7 +60,7 @@ export async function POST(req: Request) {
 
     if (!isMailConfigured() && (process.env.VERCEL || process.env.NODE_ENV === "production")) {
       return NextResponse.json(
-        { error: "Email sending is not configured. Set MAIL_FROM and RESEND_API_KEY (or SMTP) on the host." },
+        { error: "Email sending is not configured. Set SMTP_HOST, SMTP_USER, and SMTP_PASSWORD on Vercel." },
         { status: 500 },
       );
     }
@@ -113,7 +116,7 @@ export async function POST(req: Request) {
           success: true,
           needsVerification: true,
           canResend: true,
-          error: "Account created, but the confirmation email could not be sent. Use Resend.",
+          error: "Account created, but the confirmation email could not be sent. Check SMTP settings on Vercel.",
         },
         { status: 500 },
       );

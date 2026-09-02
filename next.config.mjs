@@ -24,6 +24,7 @@ function supabaseRemotePatterns() {
 }
 
 const nextConfig = {
+  serverExternalPackages: ["nodemailer"],
   images: {
     formats: ["image/webp"],
     qualities: [75],
