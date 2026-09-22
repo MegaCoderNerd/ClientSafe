@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { sendPasswordResetEmail } from "@/lib/auth-mail";
+import { normalizeEmailAddress } from "@/lib/email-address";
 import { findAuthUserByEmail } from "@/lib/supabase-auth-admin";
 import { supabase } from "@/lib/supabase";
 
@@ -9,8 +10,7 @@ export const maxDuration = 30;
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const email = String(body.email ?? "").trim().toLowerCase();
-
+    const email = normalizeEmailAddress(String(body.email ?? ""));
     if (!email) {
       return NextResponse.json({ error: "Email is required" }, { status: 400 });
     }

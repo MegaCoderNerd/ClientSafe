@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { sendConfirmationEmail } from "@/lib/auth-mail";
+import { normalizeEmailAddress } from "@/lib/email-address";
 import { ensureAppUserFromAuth } from "@/lib/ensure-app-user";
 import { describeMailError, isMailConfigured } from "@/lib/mail";
 import { findAuthUserByEmail, isAuthUserConfirmed } from "@/lib/supabase-auth-admin";
@@ -56,7 +57,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Password must be at least 6 characters" }, { status: 400 });
     }
 
-    const normalizedEmail = email.trim().toLowerCase();
+    const normalizedEmail = normalizeEmailAddress(email);
+    if (!normalizedEmail) {
+      return NextResponse.json({ error: "Enter a valid email address." }, { status: 400 });
+    }
 
     if (!isMailConfigured() && (process.env.VERCEL || process.env.NODE_ENV === "production")) {
       return NextResponse.json(
@@ -125,7 +129,7 @@ export async function POST(req: Request) {
     return NextResponse.json({
       success: true,
       needsVerification: true,
-      message: "Check your inbox to verify your email before signing in.",
+      message: `Check ${normalizedEmail} to verify your email before signing in.`,
     });
   } catch (error) {
     console.error("/api/signup error:", error);

@@ -1,4 +1,5 @@
 import { setDefaultResultOrder } from "node:dns";
+import { normalizeEmailAddress } from "@/lib/email-address";
 import nodemailer from "nodemailer";
 import type SMTPTransport from "nodemailer/lib/smtp-transport";
 
@@ -118,13 +119,16 @@ export function describeMailError(error: unknown) {
   const combined = `${message} ${extra}`.toLowerCase();
 
   if (/invalid login|username and password not accepted|535|eauth|authentication failed/i.test(combined)) {
-    return "Gmail rejected the SMTP login. SMTP_USER must be the full Gmail address, and SMTP_PASSWORD must be the 16-character App Password with no spaces (not your normal Gmail password). Save the vars on Production and Preview, then redeploy.";
+    return "The SMTP server rejected the login. Check SMTP_USER and SMTP_PASSWORD (for Gmail, use an App Password with no spaces). Save on Production and Preview, then redeploy.";
   }
   if (/timeout|etimedout|econnrefused|enotfound|enetunreach|socket/i.test(combined)) {
-    return "The Vercel server could not connect to SMTP. Use SMTP_HOST=smtp.gmail.com and SMTP_PORT=465.";
+    return "The Vercel server could not connect to SMTP. Check SMTP_HOST and SMTP_PORT (Gmail: smtp.gmail.com and 465).";
   }
   if (/must issue a starttls|wrong version number|ssl|tls/i.test(combined)) {
-    return "SMTP TLS failed. For Gmail set SMTP_PORT=465 (or 587) and leave MAIL_FROM empty so the Gmail address is used.";
+    return "SMTP TLS failed. Try SMTP_PORT=465 or SMTP_PORT=587.";
+  }
+  if (/recipient|rcpt|550|553|relay/i.test(combined)) {
+    return "The SMTP server refused the recipient address. Confirmation is sent to the full address the user typed; the From address must be the SMTP mailbox (for Gmail, SMTP_USER).";
   }
   return message.replace(/\s+/g, " ").trim().slice(0, 240) || "SMTP send failed";
 }
@@ -167,9 +171,16 @@ function smtpAttempts(settings: SmtpSettings): SMTPTransport.Options[] {
 }
 
 async function sendWithSmtp(settings: SmtpSettings, from: string, message: MailMessage) {
-  if (isGmailHost(settings.host) && !settings.user.includes("@")) {
-    throw new Error("SMTP_USER must be the full Gmail address, for example you@gmail.com.");
+  const recipient = normalizeEmailAddress(message.to);
+  if (!recipient) {
+    throw new Error("Cannot send mail: the recipient address is missing or invalid.");
   }
+
+  if (isGmailHost(settings.host) && !settings.user.includes("@")) {
+    throw new Error("SMTP_USER must be the full mailbox used to authenticate, for example you@gmail.com.");
+  }
+
+  const envelopeFrom = settings.user.includes("@") ? settings.user : from;
 
   let lastError: unknown;
   for (const options of smtpAttempts(settings)) {
@@ -177,7 +188,11 @@ async function sendWithSmtp(settings: SmtpSettings, from: string, message: MailM
     try {
       await transporter.sendMail({
         from,
-        to: message.to,
+        to: recipient,
+        envelope: {
+          from: envelopeFrom,
+          to: [recipient],
+        },
         subject: message.subject,
         text: message.text,
         html: message.html,
@@ -227,19 +242,25 @@ async function sendWithResend(from: string, message: MailMessage) {
 }
 
 export async function sendMail(message: MailMessage) {
+  const recipient = normalizeEmailAddress(message.to);
+  if (!recipient) {
+    throw new Error("Cannot send mail: the recipient address is missing or invalid.");
+  }
+  const payload = { ...message, to: recipient };
+
   const smtp = smtpSettings();
   if (smtp) {
     const from = mailFrom(smtp);
     if (!from) {
       throw new Error("SMTP is set but no From address is available. Set SMTP_USER to the mailbox you authenticate with.");
     }
-    await sendWithSmtp(smtp, from, message);
+    await sendWithSmtp(smtp, from, payload);
     return;
   }
 
   const resendFrom = env("MAIL_FROM");
   if (env("RESEND_API_KEY") && resendFrom && !isUnusableFrom(resendFrom)) {
-    await sendWithResend(resendFrom, message);
+    await sendWithResend(resendFrom, payload);
     return;
   }
 

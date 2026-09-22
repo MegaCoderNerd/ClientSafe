@@ -97,7 +97,9 @@ export default function SignUpPage() {
             <label className="block text-sm">
               Email
               <input
-                type="email"
+                type="text"
+                inputMode="email"
+                autoComplete="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="field-input mt-1"

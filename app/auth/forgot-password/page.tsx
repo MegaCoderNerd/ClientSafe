@@ -48,7 +48,9 @@ export default function ForgotPasswordPage() {
           <label className="block text-sm">
             Email
             <input
-              type="email"
+              type="text"
+              inputMode="email"
+              autoComplete="email"
               value={email}
               onChange={(event) => setEmail(event.target.value)}
               className="field-input mt-1"

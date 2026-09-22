@@ -3,6 +3,7 @@ import type { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { ensureDemoWorkspace } from "@/lib/demo-data";
 import { ensureAppUserFromAuth } from "@/lib/ensure-app-user";
+import { normalizeEmailAddress } from "@/lib/email-address";
 import { findAuthUserByEmail } from "@/lib/supabase-auth-admin";
 import { getSupabaseAnon } from "@/lib/supabase-anon";
 import { sanitizeDeployedAuthUrl } from "@/lib/supabase-env";
@@ -130,7 +131,7 @@ export const authOptions: NextAuthOptions = {
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
 
-        const email = credentials.email.trim().toLowerCase();
+        const email = normalizeEmailAddress(credentials.email) ?? credentials.email.trim().toLowerCase();
         const password = credentials.password;
         const demo = getDemoAccount(email, password);
 

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { sendConfirmationEmail } from "@/lib/auth-mail";
+import { normalizeEmailAddress } from "@/lib/email-address";
 import { describeMailError } from "@/lib/mail";
 import { findAuthUserByEmail, isAuthUserConfirmed } from "@/lib/supabase-auth-admin";
 
@@ -9,8 +10,7 @@ export const maxDuration = 30;
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const email = String(body.email ?? "").trim().toLowerCase();
-
+    const email = normalizeEmailAddress(String(body.email ?? ""));
     if (!email) {
       return NextResponse.json({ error: "Email is required" }, { status: 400 });
     }
